@@ -1,17 +1,17 @@
 
 # ****************************************************************************
 # Copyright 2023 Technology Innovation Institute
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # ****************************************************************************
@@ -364,42 +364,6 @@ class MultiInputNonlinearLogicalOperator(Component):
         result = variables, constraints
 
         return result
-
-    def sat_constraints(self):
-        """
-        Return a list of variables and a list of clauses for AND operation in SAT CIPHER model.
-
-        This method support AND operation using more than two operands.
-
-        .. SEEALSO::
-
-            :ref:`sat-standard` for the format.
-
-        INPUT:
-
-        - None
-
-        EXAMPLES::
-
-            sage: from claasp.ciphers.block_ciphers.fancy_block_cipher import FancyBlockCipher
-            sage: fancy = FancyBlockCipher(number_of_rounds=3)
-            sage: and_component = fancy.component_from(0, 8)
-            sage: and_component.sat_constraints()
-            (['and_0_8_0',
-              'and_0_8_1',
-              'and_0_8_2',
-              ...
-              '-and_0_8_11 xor_0_7_11',
-              '-and_0_8_11 key_23',
-              'and_0_8_11 -xor_0_7_11 -key_23'])
-        """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
-        constraints = []
-        for i in range(output_bit_len):
-            constraints.extend(sat_utils.cnf_and(output_bit_ids[i], input_bit_ids[i::output_bit_len]))
-
-        return output_bit_ids, constraints
 
     def sat_xor_differential_propagation_constraints(self, model=None):
         """
