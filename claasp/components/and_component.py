@@ -348,7 +348,7 @@ class AND(MultiInputNonlinearLogicalOperator):
         for i in range(output_bit_len):
             intermediate_ids = [f'int_{j:03}_{output_bit_ids[i]}' for j in range(number_of_intermediates)]
             constraints.extend(sat_utils.cnf_and_seq(intermediate_ids +
-                               output_bit_ids[i], input_bit_ids[i::output_bit_len]))
+                               [output_bit_ids[i]], input_bit_ids[i::output_bit_len]))
 
         return output_bit_ids, constraints
 

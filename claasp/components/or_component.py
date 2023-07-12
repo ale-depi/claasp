@@ -226,17 +226,17 @@ class OR(MultiInputNonlinearLogicalOperator):
 
         EXAMPLES::
 
-            sage: from claasp.ciphers.block_ciphers.fancy_block_cipher import FancyBlockCipher
-            sage: fancy = FancyBlockCipher(number_of_rounds=3)
-            sage: and_component = fancy.component_from(0, 8)
-            sage: and_component.sat_constraints()
-            (['and_0_8_0',
-              'and_0_8_1',
-              'and_0_8_2',
+            sage: from claasp.ciphers.permutations.gift_permutation import GiftPermutation
+            sage: gift = GiftPermutation(number_of_rounds=3)
+            sage: or_component = gift.component_from(0, 4)
+            sage: or_component.sat_constraints()
+            (['or_0_4_0',
+              'or_0_4_1',
+              'or_0_4_2',
               ...
-              '-and_0_8_11 xor_0_7_11',
-              '-and_0_8_11 key_23',
-              'and_0_8_11 -xor_0_7_11 -key_23'])
+              'or_0_4_31 -xor_0_3_031',
+              'or_0_4_31 -xor_0_1_031',
+              '-or_0_4_31 xor_0_3_031 xor_0_1_031'])
         """
         _, input_bit_ids = self._generate_input_ids()
         output_bit_len, output_bit_ids = self._generate_output_ids()
@@ -245,7 +245,7 @@ class OR(MultiInputNonlinearLogicalOperator):
         for i in range(output_bit_len):
             intermediate_ids = [f'int_{j:03}_{output_bit_ids[i]}' for j in range(number_of_intermediates)]
             constraints.extend(sat_utils.cnf_or_seq(intermediate_ids +
-                               output_bit_ids[i], input_bit_ids[i::output_bit_len]))
+                               [output_bit_ids[i]], input_bit_ids[i::output_bit_len]))
 
         return output_bit_ids, constraints
 

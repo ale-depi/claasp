@@ -132,7 +132,7 @@ class Component:
         input_id_link = self.id
         in_suffix = constants.INPUT_BIT_ID_SUFFIX
         input_bit_size = self.input_bit_size
-        input_bit_ids = [f'{input_id_link}_{i}{in_suffix}' for i in range(input_bit_size)]
+        input_bit_ids = [f'{input_id_link}_{i:03}{in_suffix}' for i in range(input_bit_size)]
 
         return input_bit_size, input_bit_ids
 
@@ -141,7 +141,7 @@ class Component:
         input_bit_positions = self.input_bit_positions
         input_bit_ids = []
         for link, positions in zip(input_id_link, input_bit_positions):
-            input_bit_ids.extend([f'{link}_{j}{suffix}' for j in positions])
+            input_bit_ids.extend([f'{link}_{j:03}{suffix}' for j in positions])
 
         return self.input_bit_size, input_bit_ids
 
