@@ -646,9 +646,9 @@ class MixColumn(LinearLayer):
               'mix_column_0_23_1',
               'mix_column_0_23_2',
               ...
-              '-mix_column_0_23_15 -mix_column_0_20_35 mix_column_0_20_39 -mix_column_0_20_43',
-              '-mix_column_0_23_15 mix_column_0_20_35 -mix_column_0_20_39 -mix_column_0_20_43',
-              'mix_column_0_23_15 -mix_column_0_20_35 -mix_column_0_20_39 -mix_column_0_20_43'])
+              'mix_column_0_23_15 -int_000_mix_column_0_23_15 mix_column_0_20_043',
+              'mix_column_0_23_15 int_000_mix_column_0_23_15 -mix_column_0_20_043',
+              '-mix_column_0_23_15 -int_000_mix_column_0_23_15 -mix_column_0_20_043'])
         """
         matrix = binary_matrix_of_linear_component(self)
         matrix_transposed = [[matrix[i][j] for i in range(matrix.nrows())]

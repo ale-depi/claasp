@@ -463,15 +463,20 @@ class LinearLayer(Component):
             sage: linear_layer_component = fancy.component_from(0, 6)
             sage: constraints = linear_layer_component.sat_constraints()
             sage: constraints[1][-1]
-            'linear_layer_0_6_23 -sbox_0_0_0 -sbox_0_0_1 -sbox_0_0_2 -sbox_0_0_3 -sbox_0_1_3 -sbox_0_2_1 -sbox_0_3_1 -sbox_0_3_2 -sbox_0_3_3 -sbox_0_4_1 -sbox_0_4_2 -sbox_0_4_3 -sbox_0_5_1 -sbox_0_5_2 -sbox_0_5_3'
+            '-linear_layer_0_6_23 -int_012_linear_layer_0_6_23 -sbox_0_5_003'
         """
         input_bit_len, input_bit_ids = self._generate_input_ids()
         output_bit_len, output_bit_ids = self._generate_output_ids()
         matrix = self.description
         constraints = []
         for i in range(output_bit_len):
-            operands = [input_bit_ids[j] for j in range(input_bit_len) if matrix[j][i]]
-            constraints.extend(sat_utils.cnf_xor(output_bit_ids[i], operands))
+            operands_ids = [input_bit_ids[j] for j in range(input_bit_len) if matrix[j][i]]
+            if len(operands_ids) == 1:
+                constraints.extend(sat_utils.cnf_equivalent([output_bit_ids[i], operands_ids[0]]))
+            else:
+                number_of_intermediates = len(operands_ids) - 2
+                intermediate_ids = [f'int_{j:03}_{output_bit_ids[i]}' for j in range(number_of_intermediates)]
+                constraints.extend(sat_utils.cnf_xor_seq(intermediate_ids + [output_bit_ids[i]], operands_ids))
 
         return output_bit_ids, constraints
 

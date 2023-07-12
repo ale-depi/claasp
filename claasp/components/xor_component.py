@@ -710,11 +710,11 @@ class XOR(Component):
         """
         _, input_bit_ids = self._generate_input_ids()
         output_bit_len, output_bit_ids = self._generate_output_ids()
+        num_of_intermediates = self.description[1] - 2
         constraints = []
         for i in range(output_bit_len):
-            result_bit_ids = [f'inter_{j}_{output_bit_ids[i]}'
-                              for j in range(self.description[1] - 2)] + [output_bit_ids[i]]
-            constraints.extend(sat_utils.cnf_xor_seq(result_bit_ids, input_bit_ids[i::output_bit_len]))
+            intermediate_ids = [f'int_{j:03}_{output_bit_ids[i]}' for j in range(num_of_intermediates)]
+            constraints.extend(sat_utils.cnf_xor_seq(intermediate_ids + [output_bit_ids[i]], input_bit_ids[i::output_bit_len]))
 
         return output_bit_ids, constraints
 
