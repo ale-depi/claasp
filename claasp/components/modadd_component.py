@@ -39,6 +39,26 @@ def cp_twoterms(input_1, input_2, out, input_length, cp_constraints, cp_declarat
     return cp_declarations, cp_constraints
 
 
+def sat_modadd(out_ids, in_ids_0, in_ids_1, carries, intermediates):
+    # The SAT modular addition between 2 addenda
+    cnf = []
+    for i, carry in enumerate(carries[:-1]):
+        cnf.extend(sat_utils.cnf_carry(carry, in_ids_0[i + 1], in_ids_1[i + 1], carries[i + 1]))
+    cnf.extend(sat_utils.cnf_and(carries[-1], (in_ids_0[-1], in_ids_1[-1])))
+    for i, out_id in enumerate(out_ids[:-1]):
+        cnf.extend(sat_utils.cnf_result(out_id, in_ids_0[i], in_ids_1[i], carries[i], intermediates[i]))
+    cnf.extend(sat_utils.cnf_xor(out_ids[-1], [in_ids_0[-1], in_ids_1[-1]]))
+    return cnf
+
+
+def sat_modadd_seq(out_ids, in_ids, carries, intermediates):
+    # The SAT modular addition between more than 2 addenda
+    cnf = sat_modadd(out_ids[0], in_ids[0], in_ids[1], carries[0], intermediates[0])
+    for i in range(1, len(out_ids)):
+        cnf.extend(sat_modadd(out_ids[i], out_ids[i - 1], in_ids[i + 1], carries[i], intermediates[i]))
+    return cnf
+
+
 class MODADD(Modular):
     def __init__(self, current_round_number, current_round_number_of_components,
                  input_id_links, input_bit_positions, output_bit_size):
@@ -267,30 +287,26 @@ class MODADD(Modular):
               'modadd_0_1_15 rot_0_0_15 -plaintext_31',
               '-modadd_0_1_15 -rot_0_0_15 -plaintext_31'])
         """
-        _, input_bit_ids = self._generate_input_ids()
+        input_bit_len, input_bit_ids = self._generate_input_ids()
         output_bit_len, output_bit_ids = self._generate_output_ids()
-        carry_bit_ids = [f'carry_{output_bit_ids[i]}' for i in range(output_bit_len - 1)]
+        num_of_addenda = self.description[1]
         constraints = []
+        # reformat of the in_ids
+        word_size = input_bit_len // num_of_addenda
+        input_bit_ids = [input_bit_ids[i * word_size: (i + 1) * word_size]
+                         for i in range(num_of_addenda)]
         # carries
-        for i in range(output_bit_len - 2):
-            constraints.extend(sat_utils.cnf_carry(carry_bit_ids[i],
-                                                   input_bit_ids[i + 1],
-                                                   input_bit_ids[output_bit_len + i + 1],
-                                                   carry_bit_ids[i + 1]))
-        constraints.extend(sat_utils.cnf_and(carry_bit_ids[output_bit_len - 2],
-                                             (input_bit_ids[output_bit_len - 1],
-                                              input_bit_ids[2 * output_bit_len - 1])))
-        # results
-        for i in range(output_bit_len - 1):
-            constraints.extend(sat_utils.cnf_xor(output_bit_ids[i],
-                                                 [input_bit_ids[i],
-                                                  input_bit_ids[output_bit_len + i],
-                                                  carry_bit_ids[i]]))
-        constraints.extend(sat_utils.cnf_xor(output_bit_ids[output_bit_len - 1],
-                                             [input_bit_ids[output_bit_len - 1],
-                                              input_bit_ids[2 * output_bit_len - 1]]))
+        carry_bit_ids = [[f'carry_{i:03}_{output_bit_id}' for output_bit_id in output_bit_ids[:-1]]
+                         for i in range(num_of_addenda - 1)]
+        # intermediates
+        intermediates_ids = [[f'modadd_intermediate_{i:03}_{output_bit_id}' for output_bit_id in output_bit_ids]
+                             for i in range(num_of_addenda - 1)]
+        # reformat of the out_ids
+        output_bit_ids = [[f'modadd_output_{i:03}_{output_bit_id}' for output_bit_id in output_bit_ids]
+                          for i in range(num_of_addenda - 2)] + [output_bit_ids]
+        constraints.extend(sat_modadd_seq(output_bit_ids, input_bit_ids, carry_bit_ids, intermediates_ids))
 
-        return carry_bit_ids + output_bit_ids, constraints
+        return carry_bit_ids + intermediates_ids + output_bit_ids, constraints
 
     def smt_constraints(self):
         """

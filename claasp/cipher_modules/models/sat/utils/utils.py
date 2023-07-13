@@ -297,7 +297,7 @@ def cnf_carry(carry, x, y, previous_carry):
 
     INPUT:
 
-    - ``carry`` -- **string**; the carry to be comuted (current carry)
+    - ``carry`` -- **string**; the carry to be computed (current carry)
     - ``x`` -- **string**; the bit of the first addendum
     - ``y`` -- **string**; the bit of the second addendum
     - ``previous_carry`` -- **string**; the previous carry
@@ -319,6 +319,42 @@ def cnf_carry(carry, x, y, previous_carry):
             f'-{x} -{previous_carry} {carry}',
             f'{y} {previous_carry} -{carry}',
             f'-{y} -{previous_carry} {carry}')
+
+
+def cnf_result(result, x, y, carry, intermediate):
+    """
+    Return a tuple of strings.
+
+    Representing the CNF of the Boolean equality ``result = ``. It represents the general
+    form of a carry when performing modular addition between two bitvectors.
+
+    INPUT:
+
+    - ``result`` -- **string**; the resulted to be computed
+    - ``x`` -- **string**; the bit of the first addendum
+    - ``y`` -- **string**; the bit of the second addendum
+    - ``carry`` -- **string**; the carry
+    - ``intermediate`` -- **string**; the intermediate variable to get a 3-CNF
+
+    EXAMPLES::
+
+        sage: from claasp.cipher_modules.models.sat.utils.utils import cnf_carry
+        sage: cnf_carry('c_3', 'x_3', 'y_3', 'c_2')
+        ('x_3 y_3 -c_3',
+         '-x_3 -y_3 c_3',
+         'x_3 c_2 -c_3',
+         '-x_3 -c_2 c_3',
+         'y_3 c_2 -c_3',
+         '-y_3 -c_2 c_3')
+    """
+    return (f'-{x} {y} {intermediate}',
+            f'{x} -{y} {intermediate}',
+            f'{x} {y} -{intermediate}',
+            f'-{x} -{y} -{intermediate}',
+            f'-{result} {carry} {intermediate}',
+            f'{result} -{carry} {intermediate}',
+            f'{result} {carry} -{intermediate}',
+            f'-{result} -{carry} -{intermediate}')
 
 
 def cnf_carry_comp2(carry, x, previous_carry):
