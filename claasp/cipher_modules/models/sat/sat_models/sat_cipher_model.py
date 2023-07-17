@@ -20,6 +20,7 @@
 import time
 
 from claasp.cipher_modules.models.sat.sat_model import SatModel
+from claasp.cipher_modules.models.utils import set_component_fields
 from claasp.name_mappings import (CIPHER, WORD_OPERATION, CIPHER_OUTPUT, CONSTANT, INTERMEDIATE_OUTPUT, LINEAR_LAYER,
                                   MIX_COLUMN, SBOX)
 
@@ -108,5 +109,18 @@ class SatCipherModel(SatModel):
         end_building_time = time.time()
         solution = self.solve(CIPHER, solver_name=solver_name)
         solution['building_time_seconds'] = end_building_time - start_building_time
-
         return solution
+
+    def _parse_solver_output(self, output_values_dict):
+        out_suffix = ''
+        components_values = self._get_cipher_inputs_values(out_suffix, output_values_dict)
+        for component in self._cipher.get_all_components():
+            output_bit_size = component.output_bit_size
+            output_value = self.get_component_value(component, out_suffix, output_bit_size,
+                                                    output_values_dict)
+            hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
+            hex_value = f'{output_value:0{hex_digits}x}'
+            component_value = set_component_fields(hex_value)
+            components_values[component.id] = component_value
+
+        return components_values, None

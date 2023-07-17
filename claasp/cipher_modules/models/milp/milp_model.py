@@ -44,7 +44,7 @@ from sage.numerical.mip import MixedIntegerLinearProgram
 
 from claasp.cipher_modules.models.milp.utils.config import SOLVER_DEFAULT
 from claasp.cipher_modules.models.utils import (convert_solver_solution_to_dictionary,
-                                                set_component_value_weight_sign)
+                                                set_component_fields)
 
 verbose = 0
 verbose_print = print if verbose else lambda *a, **k: None
@@ -366,7 +366,7 @@ class MilpModel:
             weight = 0
             if component_id + "_probability" in probability_variables:
                 weight = probability_variables[component_id + "_probability"] / 10.
-            final_output.append(set_component_value_weight_sign(difference, weight))
+            final_output.append(set_component_fields(difference, weight))
 
         return final_output
 

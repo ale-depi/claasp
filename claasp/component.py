@@ -148,7 +148,7 @@ class Component:
     def _generate_output_ids(self, suffix=''):
         output_id_link = self.id
         output_bit_size = self.output_bit_size
-        output_bit_ids = [f'{output_id_link}_{j}{suffix}' for j in range(output_bit_size)]
+        output_bit_ids = [f'{output_id_link}_{j:03}{suffix}' for j in range(output_bit_size)]
 
         return output_bit_size, output_bit_ids
 

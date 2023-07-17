@@ -71,15 +71,17 @@ def convert_solver_solution_to_dictionary(cipher_id, model_type, solver_name, so
          'solving_time_seconds': 0.239000000000000,
          'total_weight': 0}
     """
-    return {
+    solution = {
         'cipher_id': cipher_id,
         'model_type': model_type,
         'solver_name': solver_name,
         'solving_time_seconds': solve_time,
         'memory_megabytes': memory,
-        'components_values': components_values,
-        'total_weight': total_weight
+        'components_values': components_values
     }
+    if total_weight is not None:
+        solution['total_weight'] = total_weight
+    return solution
 
 
 def create_directory(file_path, library_path):
@@ -190,7 +192,7 @@ def print_components_values(solution):
     print(f'└{"─" * 27}┴{"─" * 42}┴{"─" * 8}┘')
 
 
-def set_component_value_weight_sign(value, weight=0, sign=1):
+def set_component_fields(value, weight=None, sign=None):
     """
     Return a dictionary that represents the solution for one component of the cipher.
 
@@ -204,15 +206,16 @@ def set_component_value_weight_sign(value, weight=0, sign=1):
 
     EXAMPLES::
 
-        sage: from claasp.cipher_modules.models.utils import set_component_value_weight_sign
-        sage: set_component_value_weight_sign('0x0000', 0, 1)
+        sage: from claasp.cipher_modules.models.utils import set_component_fields
+        sage: set_component_fields('0x0000', 0, 1)
         {'sign': 1, 'value': '0x0000', 'weight': 0}
     """
-    return {
-        'value': value,
-        'weight': weight,
-        'sign': sign
-    }
+    component_fields = {'value': value}
+    if weight is not None:
+        component_fields['weight'] = weight
+    if sign is not None:
+        component_fields['sign'] = sign
+    return component_fields
 
 
 def set_fixed_variables(component_id, constraint_type, bit_positions, bit_values):

@@ -53,7 +53,7 @@ import subprocess
 
 from claasp.name_mappings import (SBOX, CIPHER, XOR_LINEAR)
 from claasp.cipher_modules.models.smt.utils import constants, utils
-from claasp.cipher_modules.models.utils import set_component_value_weight_sign, convert_solver_solution_to_dictionary
+from claasp.cipher_modules.models.utils import set_component_fields, convert_solver_solution_to_dictionary
 
 
 def get_component_value(component, suffix, output_bit_size, var_dict):
@@ -356,14 +356,14 @@ class SmtModel:
             if model_type != CIPHER and (('MODADD' in component.description) or ('AND' in component.description) or
                                          ('OR' in component.description) or (SBOX in component.type)):
                 weight = sum([var_dict[f'hw_{component.id}_{i}{out_suffix}'] for i in range(output_bit_size)])
-            component_value = set_component_value_weight_sign(hex_value, weight)
+            component_value = set_component_fields(hex_value, weight)
             components_values[f'{component.id}{out_suffix}'] = component_value
             total_weight += weight
             if model_type == XOR_LINEAR:
                 input_value = get_component_value(component, in_suffix, output_bit_size, var_dict)
                 hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
                 hex_value = f'{input_value:0{hex_digits}x}'
-                component_value = set_component_value_weight_sign(hex_value, 0)
+                component_value = set_component_fields(hex_value, 0)
                 components_values[f'{component.id}{in_suffix}'] = component_value
 
         return components_values, total_weight
@@ -378,7 +378,7 @@ class SmtModel:
                     value ^= var_dict[f'{cipher_input}_{i}{out_suffix}']
             width = bit_size // 4 + (bit_size % 4 != 0)
             hex_value = f'{value:0{width}x}'
-            components_values[cipher_input] = set_component_value_weight_sign(hex_value)
+            components_values[cipher_input] = set_component_fields(hex_value)
 
         return components_values
 
