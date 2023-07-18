@@ -18,6 +18,7 @@
 
 
 from claasp.components.modular_component import Modular
+from claasp.components.modadd_component import sat_modadd
 from claasp.cipher_modules.models.sat.utils import utils as sat_utils
 from claasp.cipher_modules.models.smt.utils import utils as smt_utils
 
@@ -139,7 +140,7 @@ class MODSUB(Modular):
 
         return cp_declarations, cp_constraints
 
-    def get_bit_based_vectorized_python_code(self, params,convert_output_to_bytes):
+    def get_bit_based_vectorized_python_code(self, params):
         return [f'  {self.id} = bit_vector_MODSUB([{",".join(params)} ], '
                 f'{self.description[1]}, {self.output_bit_size})']
 
@@ -168,56 +169,38 @@ class MODSUB(Modular):
             sage: raiden = RaidenBlockCipher(number_of_rounds=3)
             sage: modsub_component = raiden.component_from(0, 7)
             sage: modsub_component.sat_constraints()
-            (['temp_carry_plaintext_32',
-              'temp_carry_plaintext_33',
-              'temp_carry_plaintext_34',
+            (['carry_modadd_0_4_000',
+              'carry_modadd_0_4_001',
+              'carry_modadd_0_4_002',
               ...
-              'modsub_0_7_31 -modadd_0_4_31 temp_input_plaintext_63',
-              'modsub_0_7_31 modadd_0_4_31 -temp_input_plaintext_63',
-              '-modsub_0_7_31 -modadd_0_4_31 -temp_input_plaintext_63'])
+              'modsub_0_7_031 -plaintext_063 result_modadd_0_4_031',
+              'modsub_0_7_031 plaintext_063 -result_modadd_0_4_031',
+              '-modsub_0_7_031 -plaintext_063 -result_modadd_0_4_031'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
-        temp_carry_bit_ids = [f'temp_carry_{input_bit_ids[output_bit_len + i]}'
-                              for i in range(output_bit_len - 1)]
-        temp_input_bit_ids = [f'temp_input_{input_bit_ids[output_bit_len + i]}'
-                              for i in range(output_bit_len)]
-        carry_bit_ids = [f'carry_{output_bit_ids[i]}' for i in range(output_bit_len - 1)]
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
+        input2_ids = input_ids[output_len:]
+        twocomp_carry_ids = [f'twocomp_carry_{input_id}' for input_id in input2_ids[:-1]]
+        twocomp_result_ids = [f'twocomp_result_{input_id}' for input_id in input2_ids]
+        carry_ids = [f'carry_{output_id}' for output_id in output_ids[:-1]]
+        intermediate_ids = [f'intermediate_{output_id}' for output_id in output_ids]
         constraints = []
         # carries complement 2
-        for i in range(output_bit_len - 2):
-            constraints.extend(sat_utils.cnf_carry_comp2(temp_carry_bit_ids[i],
-                                                         input_bit_ids[output_bit_len + i + 1],
-                                                         temp_carry_bit_ids[i + 1]))
-        constraints.extend(sat_utils.cnf_inequality(temp_carry_bit_ids[output_bit_len - 2],
-                                                    input_bit_ids[2 * output_bit_len - 1]))
+        for i in range(output_len - 2):
+            constraints.extend(sat_utils.cnf_carry_comp2(twocomp_carry_ids[i], input2_ids[i + 1],
+                                                         twocomp_carry_ids[i + 1]))
+        constraints.extend(sat_utils.cnf_inequality(twocomp_carry_ids[-1], input2_ids[-1]))
         # results complement 2
-        for i in range(output_bit_len - 1):
-            constraints.extend(sat_utils.cnf_result_comp2(temp_input_bit_ids[i],
-                                                          input_bit_ids[output_bit_len + i],
-                                                          temp_carry_bit_ids[i]))
-        constraints.extend(sat_utils.cnf_equivalent([temp_input_bit_ids[output_bit_len - 1],
-                                                    input_bit_ids[2 * output_bit_len - 1]]))
-        # carries
-        for i in range(output_bit_len - 2):
-            constraints.extend(sat_utils.cnf_carry(carry_bit_ids[i],
-                                                   input_bit_ids[i + 1],
-                                                   temp_input_bit_ids[i + 1],
-                                                   carry_bit_ids[i + 1]))
-        constraints.extend(sat_utils.cnf_and(carry_bit_ids[output_bit_len - 2],
-                                             (input_bit_ids[output_bit_len - 1],
-                                              temp_input_bit_ids[output_bit_len - 1])))
-        # results
-        for i in range(output_bit_len - 1):
-            constraints.extend(sat_utils.cnf_xor(output_bit_ids[i],
-                                                 [input_bit_ids[i],
-                                                  temp_input_bit_ids[i],
-                                                  carry_bit_ids[i]]))
-        constraints.extend(sat_utils.cnf_xor(output_bit_ids[output_bit_len - 1],
-                                             [input_bit_ids[output_bit_len - 1],
-                                              temp_input_bit_ids[output_bit_len - 1]]))
-
-        return temp_carry_bit_ids + temp_input_bit_ids + carry_bit_ids + output_bit_ids, constraints
+        for i in range(output_len - 1):
+            constraints.extend(sat_utils.cnf_result_comp2(twocomp_result_ids[i], input2_ids[i],
+                                                          twocomp_carry_ids[i]))
+        constraints.extend(sat_utils.cnf_equivalent([twocomp_result_ids[-1], input2_ids[-1]]))
+        # final modadd
+        constraints.extend(sat_modadd(output_ids, input_ids[:output_len], twocomp_result_ids,
+                                      carry_ids, intermediate_ids))
+        bit_ids = twocomp_carry_ids + twocomp_result_ids + carry_ids + output_ids \
+            + intermediate_ids
+        return bit_ids, constraints
 
     def smt_constraints(self):
         """

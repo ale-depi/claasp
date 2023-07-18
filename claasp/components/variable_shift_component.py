@@ -25,6 +25,17 @@ from claasp.cipher_modules.models.sat.utils import utils as sat_utils
 from claasp.cipher_modules.models.smt.utils import utils as smt_utils
 
 
+def sat_shift_by_variable_bit(output_ids, input_ids, shift_id, bit_position):
+    constraints = []
+    for i, output_id in enumerate(output_ids[:-2 ** bit_position]):
+        constraints.extend(sat_utils.cnf_vshift_id(output_id, input_ids[i],
+                                                   input_ids[i + 2 ** bit_position], shift_id))
+    for i, output_id in enumerate(output_ids[-2 ** bit_position:]):
+        constraints.extend(sat_utils.cnf_vshift_false(output_id, input_ids[-2 ** bit_position + i],
+                                                      shift_id))
+    return constraints
+
+
 class VariableShift(Component):
     def __init__(self, current_round_number, current_round_number_of_components,
                  input_id_links, input_bit_positions, output_bit_size, parameter):
@@ -218,44 +229,28 @@ class VariableShift(Component):
             sage: raiden = RaidenBlockCipher(number_of_rounds=3)
             sage: variable_shift_component = raiden.component_from(0, 2)
             sage: variable_shift_component.sat_constraints()
-            (['var_shift_0_2_0',
-              'var_shift_0_2_1',
-              'var_shift_0_2_2',
+            (['var_shift_0_2_000',
+              'var_shift_0_2_001',
+              'var_shift_0_2_002',
               ...
-              '-var_shift_0_2_31 state_3_var_shift_0_2_31',
-              '-var_shift_0_2_31 -key_91',
-              'var_shift_0_2_31 -state_3_var_shift_0_2_31 key_91'])
+              '-state_004_var_shift_0_2_031 state_003_var_shift_0_2_031',
+              '-state_004_var_shift_0_2_031 -key_091',
+              'state_004_var_shift_0_2_031 -state_003_var_shift_0_2_031 key_091'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
-        input_ids = input_bit_ids[:output_bit_len]
-        shift_ids = input_bit_ids[output_bit_len:]
-        number_of_states = int(math.log2(output_bit_len)) - 1
-        states = [[f'state_{i}_{output_bit_ids[j]}' for j in range(output_bit_len)]
-                  for i in range(number_of_states)]
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
+        number_of_states = int(math.log2(output_len))
+        shift_ids = input_ids[-number_of_states:]
+        shift_ids.reverse()
+        intermediate_ids = [[f'state_{i:03}_{output_ids[j]}' for j in range(output_len)]
+                            for i in range(number_of_states - 1)]
+        states_ids = [input_ids[:output_len]] + intermediate_ids + [output_ids]
         constraints = []
-        for j in range(output_bit_len - 1):
-            constraints.extend(sat_utils.cnf_vshift_id(states[0][j], input_ids[j],
-                                                       input_ids[j + 1], shift_ids[output_bit_len - 1]))
-        constraints.extend(sat_utils.cnf_vshift_false(states[0][output_bit_len - 1], input_ids[output_bit_len - 1],
-                                                      shift_ids[output_bit_len - 1]))
-        for i in range(1, number_of_states):
-            for j in range(output_bit_len - 2 ** i):
-                constraints.extend(sat_utils.cnf_vshift_id(states[i][j], states[i - 1][j],
-                                                           states[i - 1][j + 2 ** i],
-                                                           shift_ids[output_bit_len - 1 - i]))
-            for j in range(output_bit_len - 2 ** i, output_bit_len):
-                constraints.extend(sat_utils.cnf_vshift_false(states[i][j], states[i - 1][j],
-                                                              shift_ids[output_bit_len - 1 - i]))
-        for j in range(output_bit_len - 2 ** number_of_states):
-            constraints.extend(sat_utils.cnf_vshift_id(output_bit_ids[j], states[number_of_states - 1][j],
-                                                       states[number_of_states - 1][j + 2 ** number_of_states],
-                                                       shift_ids[output_bit_len - 1 - number_of_states]))
-        for j in range(output_bit_len - 2 ** number_of_states, output_bit_len):
-            constraints.extend(sat_utils.cnf_vshift_false(output_bit_ids[j], states[number_of_states - 1][j],
-                                                          shift_ids[output_bit_len - 1 - number_of_states]))
+        for i in range(number_of_states):
+            constraints.extend(sat_shift_by_variable_bit(states_ids[i + 1], states_ids[i],
+                                                         shift_ids[i], i))
 
-        return output_bit_ids, constraints
+        return output_ids, constraints
 
     def smt_constraints(self):
         """

@@ -288,7 +288,7 @@ class MODADD(Modular):
               '-modadd_0_1_15 -rot_0_0_15 -plaintext_31'])
         """
         input_bit_len, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, output_bit_ids = self._generate_output_ids()
         num_of_addenda = self.description[1]
         constraints = []
         # reformat of the in_ids
