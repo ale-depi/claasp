@@ -58,8 +58,8 @@ class NOT(Component):
         """
         ninputs = self.input_bit_size
         noutputs = self.output_bit_size
-        input_vars = [self.id + "_" + model.input_postfix + str(i) for i in range(ninputs)]
-        output_vars = [self.id + "_" + model.output_postfix + str(i) for i in range(noutputs)]
+        input_vars = [f'{self.id}_{model.input_postfix}{i}' for i in range(ninputs)]
+        output_vars = [f'{self.id}_{model.output_postfix}{i}' for i in range(noutputs)]
         ring_R = model.ring()
         x = list(map(ring_R, input_vars))
         y = list(map(ring_R, output_vars))
@@ -465,21 +465,21 @@ class NOT(Component):
             sage: gift = GiftPermutation(number_of_rounds=3)
             sage: not_component = gift.component_from(0, 8)
             sage: not_component.sat_constraints()
-            (['not_0_8_0',
-              'not_0_8_1',
-              'not_0_8_2',
+            (['not_0_8_000',
+              'not_0_8_001',
+              'not_0_8_002',
               ...
-              '-not_0_8_30 -xor_0_6_30',
-              'not_0_8_31 xor_0_6_31',
-              '-not_0_8_31 -xor_0_6_31'])
+              '-not_0_8_030 -xor_0_6_030',
+              'not_0_8_031 xor_0_6_031',
+              '-not_0_8_031 -xor_0_6_031'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        _, output_ids = self._generate_output_ids()
         constraints = []
-        for i in range(output_bit_len):
-            constraints.extend(sat_utils.cnf_inequality(output_bit_ids[i], input_bit_ids[i]))
+        for output_id, input_id in zip(output_ids, input_ids):
+            constraints.extend(sat_utils.cnf_inequality(output_id, input_id))
 
-        return output_bit_ids, constraints
+        return output_ids, constraints
 
     def sat_xor_differential_propagation_constraints(self, model=None):
         """
@@ -499,21 +499,21 @@ class NOT(Component):
             sage: gift = GiftPermutation(number_of_rounds=3)
             sage: not_component = gift.component_from(0, 8)
             sage: not_component.sat_xor_differential_propagation_constraints()
-            (['not_0_8_0',
-              'not_0_8_1',
-              'not_0_8_2',
+            (['not_0_8_000',
+              'not_0_8_001',
+              'not_0_8_002',
               ...
-              'xor_0_6_30 -not_0_8_30',
-              'not_0_8_31 -xor_0_6_31',
-              'xor_0_6_31 -not_0_8_31'])
+              'xor_0_6_030 -not_0_8_030',
+              'not_0_8_031 -xor_0_6_031',
+              'xor_0_6_031 -not_0_8_031'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        _, output_ids = self._generate_output_ids()
         constraints = []
-        for i in range(output_bit_len):
-            constraints.extend(sat_utils.cnf_equivalent([output_bit_ids[i], input_bit_ids[i]]))
-        result = output_bit_ids, constraints
-        return result
+        for output_id, input_id in zip(output_ids, input_ids):
+            constraints.extend(sat_utils.cnf_equivalent([output_id, input_id]))
+
+        return output_ids, constraints
 
     def sat_xor_linear_mask_propagation_constraints(self, model=None):
         """
@@ -533,22 +533,22 @@ class NOT(Component):
             sage: gift = GiftPermutation(number_of_rounds=3)
             sage: not_component = gift.component_from(0, 8)
             sage: not_component.sat_xor_linear_mask_propagation_constraints()
-            (['not_0_8_0_i',
-              'not_0_8_1_i',
-              'not_0_8_2_i',
+            (['not_0_8_000_i',
+              'not_0_8_001_i',
+              'not_0_8_002_i',
               ...
-              'not_0_8_30_o -not_0_8_30_i',
-              'not_0_8_31_i -not_0_8_31_o',
-              'not_0_8_31_o -not_0_8_31_i'])
+              'not_0_8_030_i -not_0_8_030_o',
+              'not_0_8_031_o -not_0_8_031_i',
+              'not_0_8_031_i -not_0_8_031_o'])
         """
-        _, input_bit_ids = self._generate_component_input_ids()
+        _, input_ids = self._generate_component_input_ids()
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
-        output_bit_len, output_bit_ids = self._generate_output_ids(suffix=out_suffix)
+        _, output_ids = self._generate_output_ids(suffix=out_suffix)
         constraints = []
-        for i in range(output_bit_len):
-            constraints.extend(sat_utils.cnf_equivalent([input_bit_ids[i], output_bit_ids[i]]))
-        result = input_bit_ids + output_bit_ids, constraints
-        return result
+        for output_id, input_id in zip(output_ids, input_ids):
+            constraints.extend(sat_utils.cnf_equivalent([output_id, input_id]))
+
+        return input_ids + output_ids, constraints
 
     def smt_constraints(self):
         """
@@ -564,25 +564,25 @@ class NOT(Component):
             sage: ascon = AsconPermutation(number_of_rounds=3)
             sage: not_component = ascon.component_from(0, 5)
             sage: not_component.smt_constraints()
-            (['not_0_5_0',
-              'not_0_5_1',
+            (['not_0_5_000',
+              'not_0_5_001',
               ...
-              'not_0_5_62',
-              'not_0_5_63'],
-             ['(assert (distinct not_0_5_0 xor_0_2_0))',
-              '(assert (distinct not_0_5_1 xor_0_2_1))',
+              'not_0_5_062',
+              'not_0_5_063'],
+             ['(assert (distinct not_0_5_000 xor_0_2_000))',
+              '(assert (distinct not_0_5_001 xor_0_2_001))',
               ...
-              '(assert (distinct not_0_5_62 xor_0_2_62))',
-              '(assert (distinct not_0_5_63 xor_0_2_63))'])
+              '(assert (distinct not_0_5_062 xor_0_2_062))',
+              '(assert (distinct not_0_5_063 xor_0_2_063))'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        _, output_ids = self._generate_output_ids()
         constraints = []
-        for i in range(output_bit_len):
-            equation = smt_utils.smt_distinct(output_bit_ids[i], input_bit_ids[i])
+        for output_id, input_id in zip(output_ids, input_ids):
+            equation = smt_utils.smt_distinct(output_id, input_id)
             constraints.append(smt_utils.smt_assert(equation))
 
-        return output_bit_ids, constraints
+        return output_ids, constraints
 
     def smt_xor_differential_propagation_constraints(self, model=None):
         """
@@ -598,25 +598,25 @@ class NOT(Component):
             sage: ascon = AsconPermutation(number_of_rounds=3)
             sage: not_component = ascon.component_from(0, 5)
             sage: not_component.smt_xor_differential_propagation_constraints()
-            (['not_0_5_0',
-              'not_0_5_1',
+            (['not_0_5_000',
+              'not_0_5_001',
               ...
-              'not_0_5_62',
-              'not_0_5_63'],
-             ['(assert (= not_0_5_0 xor_0_2_0))',
-              '(assert (= not_0_5_1 xor_0_2_1))',
+              'not_0_5_062',
+              'not_0_5_063'],
+             ['(assert (= not_0_5_000 xor_0_2_000))',
+              '(assert (= not_0_5_001 xor_0_2_001))',
               ...
-              '(assert (= not_0_5_62 xor_0_2_62))',
-              '(assert (= not_0_5_63 xor_0_2_63))'])
+              '(assert (= not_0_5_062 xor_0_2_062))',
+              '(assert (= not_0_5_063 xor_0_2_063))'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        _, output_ids = self._generate_output_ids()
         constraints = []
-        for i in range(output_bit_len):
-            equation = smt_utils.smt_equivalent([output_bit_ids[i], input_bit_ids[i]])
+        for output_id, input_id in zip(output_ids, input_ids):
+            equation = smt_utils.smt_equivalent([output_id, input_id])
             constraints.append(smt_utils.smt_assert(equation))
-        result = output_bit_ids, constraints
-        return result
+
+        return output_ids, constraints
 
     def smt_xor_linear_mask_propagation_constraints(self, model=None):
         """
@@ -632,21 +632,21 @@ class NOT(Component):
             sage: ascon = AsconPermutation(number_of_rounds=3)
             sage: not_component = ascon.component_from(0, 5)
             sage: not_component.smt_xor_linear_mask_propagation_constraints()
-            (['not_0_5_0_i',
-              'not_0_5_1_i',
+            (['not_0_5_000_i',
+              'not_0_5_001_i',
               ...
-              'not_0_5_62_o',
-              'not_0_5_63_o'],
-             ['(assert (= not_0_5_0_i not_0_5_0_o))',
-              '(assert (= not_0_5_1_i not_0_5_1_o))',
+              'not_0_5_062_o',
+              'not_0_5_063_o'],
+             ['(assert (= not_0_5_000_i not_0_5_000_o))',
+              '(assert (= not_0_5_001_i not_0_5_001_o))',
               ...
-              '(assert (= not_0_5_62_i not_0_5_62_o))',
-              '(assert (= not_0_5_63_i not_0_5_63_o))'])
+              '(assert (= not_0_5_062_i not_0_5_062_o))',
+              '(assert (= not_0_5_063_i not_0_5_063_o))'])
         """
-        _, input_bit_ids = self._generate_component_input_ids()
+        _, input_ids = self._generate_component_input_ids()
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
-        _, output_bit_ids = self._generate_output_ids(suffix=out_suffix)
-        constraints = [smt_utils.smt_assert(smt_utils.smt_equivalent((input_bit_id, output_bit_id)))
-                       for input_bit_id, output_bit_id in zip(input_bit_ids, output_bit_ids)]
-        result = input_bit_ids + output_bit_ids, constraints
-        return result
+        _, output_ids = self._generate_output_ids(suffix=out_suffix)
+        constraints = [smt_utils.smt_assert(smt_utils.smt_equivalent((input_id, output_id)))
+                       for input_id, output_id in zip(input_ids, output_ids)]
+
+        return input_ids + output_ids, constraints
