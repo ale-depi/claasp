@@ -170,8 +170,8 @@ class XOR(Component):
         ninputs = self.input_bit_size
         noutputs = self.output_bit_size
         word_size = noutputs
-        input_vars = [self.id + "_" + model.input_postfix + str(i) for i in range(ninputs)]
-        output_vars = [self.id + "_" + model.output_postfix + str(i) for i in range(noutputs)]
+        input_vars = [f'{self.id}_{model.input_postfix}{i}' for i in range(ninputs)]
+        output_vars = [f'{self.id}_{model.output_postfix}{i}' for i in range(noutputs)]
         ring_R = model.ring()
         words_vars = [list(map(ring_R, input_vars))[i:i + word_size] for i in range(0, ninputs, word_size)]
 
@@ -310,6 +310,68 @@ class XOR(Component):
 
     def cp_deterministic_truncated_xor_differential_trail_constraints(self):
         return self.cp_deterministic_truncated_xor_differential_constraints()
+
+    def cp_transform_xor_components_for_first_step(self, model):
+        """
+        Transform a XOR component into components involving only one byte for CP.
+
+        INPUT:
+
+        - ``model`` -- **model object**; a model instance
+
+        EXAMPLES::
+
+            sage: from claasp.ciphers.block_ciphers.aes_block_cipher import AESBlockCipher
+            sage: from claasp.cipher_modules.models.cp.cp_model import CpModel
+            sage: aes = AESBlockCipher(number_of_rounds=3)
+            sage: cp = CpModel(aes)
+            sage: xor_component = aes.component_from(0, 31)
+            sage: xor_component.cp_transform_xor_components_for_first_step(cp)
+            (['array[0..3] of var 0..1: xor_0_31;'], [])
+        """
+        output_size = int(self.output_bit_size)
+        input_id_link = self.input_id_links
+        output_id_link = self.id
+        input_bit_positions = self.input_bit_positions
+        description = self.description
+        numadd = description[1]
+        numb_of_inp = len(input_id_link)
+        all_inputs = []
+        cp_declarations = [f'array[0..{(output_size - 1) // model.word_size}] of var 0..1: {output_id_link};']
+        number_of_mix = 0
+        is_mix = False
+        for i in range(numb_of_inp):
+            for j in range(len(input_bit_positions[i]) // model.word_size):
+                all_inputs.append([input_id_link[i], input_bit_positions[i][j * model.word_size] // model.word_size])
+            rem = len(input_bit_positions[i]) % model.word_size
+            if rem != 0:
+                rem = model.word_size - (len(input_bit_positions[i]) % model.word_size)
+                all_inputs.append([f'{output_id_link}_i', number_of_mix])
+                number_of_mix += 1
+                is_mix = True
+                l = 1
+                while rem > 0:
+                    length = len(input_bit_positions[i + l])
+                    del input_bit_positions[i + l][0:rem]
+                    rem -= length
+                    l += 1
+        if is_mix:
+            cp_declarations.append(f'array[0..{number_of_mix - 1}] of var 0..1: {output_id_link}_i;')
+        all_inputs += [[output_id_link, i] for i in range(output_size // model.word_size)]
+        input_len = output_size // model.word_size
+        for i in range(input_len):
+            input_bit_positions, input_id_link = \
+                get_transformed_xor_input_links_and_positions(model.word_size, all_inputs, i,
+                                                              input_len, numadd, numb_of_inp)
+            input_bits = 0
+            for input_bit in input_bit_positions:
+                input_bits += len(input_bit)
+            xor_component = XOR("", "", input_id_link, input_bit_positions, input_bits)
+            xor_component.set_description(['XOR', numadd + 1])
+            model.list_of_xor_components.append(xor_component)
+        cp_constraints = []
+
+        return cp_declarations, cp_constraints
 
     def cp_wordwise_deterministic_truncated_xor_differential_constraints(self, model):
         r"""
@@ -700,23 +762,23 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.sat_constraints()
-            (['xor_0_2_0',
-              'xor_0_2_1',
-              'xor_0_2_2',
+            (['xor_0_2_000',
+              'xor_0_2_001',
+              'xor_0_2_002',
               ...
-              'xor_0_2_15 -modadd_0_1_15 key_63',
-              'xor_0_2_15 modadd_0_1_15 -key_63',
-              '-xor_0_2_15 -modadd_0_1_15 -key_63'])
+              'xor_0_2_015 -modadd_0_1_015 key_063',
+              'xor_0_2_015 modadd_0_1_015 -key_063',
+              '-xor_0_2_015 -modadd_0_1_015 -key_063'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
         num_of_intermediates = self.description[1] - 2
         constraints = []
-        for i in range(output_bit_len):
-            intermediate_ids = [f'int_{j:03}_{output_bit_ids[i]}' for j in range(num_of_intermediates)]
-            constraints.extend(sat_utils.cnf_xor_seq(intermediate_ids + [output_bit_ids[i]], input_bit_ids[i::output_bit_len]))
+        for i in range(output_len):
+            intermediate_ids = [f'int_{j:03}_{output_ids[i]}' for j in range(num_of_intermediates)]
+            constraints.extend(sat_utils.cnf_xor_seq(intermediate_ids + [output_ids[i]], input_ids[i::output_len]))
 
-        return output_bit_ids, constraints
+        return output_ids, constraints
 
     def sat_xor_differential_propagation_constraints(self, model=None):
         return self.sat_constraints()
@@ -739,24 +801,23 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.sat_xor_linear_mask_propagation_constraints()
-            (['xor_0_2_0_i',
-              'xor_0_2_1_i',
-              'xor_0_2_2_i',
+            (['xor_0_2_000_i',
+              'xor_0_2_001_i',
+              'xor_0_2_002_i',
               ...
-              'xor_0_2_15_i -xor_0_2_15_o',
-              'xor_0_2_31_i -xor_0_2_15_i',
-              'xor_0_2_15_o -xor_0_2_31_i'])
+              'xor_0_2_015_i -xor_0_2_015_o',
+              'xor_0_2_031_i -xor_0_2_015_i',
+              'xor_0_2_015_o -xor_0_2_031_i'])
         """
-        _, input_bit_ids = self._generate_component_input_ids()
+        _, input_ids = self._generate_component_input_ids()
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
-        output_bit_len, output_bit_ids = self._generate_output_ids(suffix=out_suffix)
-        bit_ids = input_bit_ids + output_bit_ids
+        output_len, output_ids = self._generate_output_ids(suffix=out_suffix)
+        bit_ids = input_ids + output_ids
         constraints = []
-        for i in range(output_bit_len):
-            constraints.extend(sat_utils.cnf_equivalent(bit_ids[i::output_bit_len]))
-        result = bit_ids, constraints
+        for i in range(output_len):
+            constraints.extend(sat_utils.cnf_equivalent(bit_ids[i::output_len]))
 
-        return result
+        return bit_ids, constraints
 
     def smt_constraints(self):
         """
@@ -772,26 +833,26 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.smt_constraints()
-            (['xor_0_2_0',
-              'xor_0_2_1',
+            (['xor_0_2_000',
+              'xor_0_2_001',
               ...
-              'xor_0_2_14',
-              'xor_0_2_15'],
-             ['(assert (= xor_0_2_0 (xor modadd_0_1_0 key_48)))',
-              '(assert (= xor_0_2_1 (xor modadd_0_1_1 key_49)))',
+              'xor_0_2_014',
+              'xor_0_2_015'],
+             ['(assert (= xor_0_2_000 (xor modadd_0_1_000 key_048)))',
+              '(assert (= xor_0_2_001 (xor modadd_0_1_001 key_049)))',
               ...
-              '(assert (= xor_0_2_14 (xor modadd_0_1_14 key_62)))',
-              '(assert (= xor_0_2_15 (xor modadd_0_1_15 key_63)))'])
+              '(assert (= xor_0_2_014 (xor modadd_0_1_014 key_062)))',
+              '(assert (= xor_0_2_015 (xor modadd_0_1_015 key_063)))'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
         constraints = []
-        for i in range(output_bit_len):
-            operation = smt_utils.smt_xor(input_bit_ids[i::output_bit_len])
-            equation = smt_utils.smt_equivalent([output_bit_ids[i], operation])
+        for i in range(output_len):
+            operation = smt_utils.smt_xor(input_ids[i::output_len])
+            equation = smt_utils.smt_equivalent([output_ids[i], operation])
             constraints.append(smt_utils.smt_assert(equation))
 
-        return output_bit_ids, constraints
+        return output_ids, constraints
 
     def smt_xor_differential_propagation_constraints(self, model=None):
         return self.smt_constraints()
@@ -810,87 +871,24 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.smt_xor_linear_mask_propagation_constraints()
-            (['xor_0_2_0_o',
-              'xor_0_2_1_o',
+            (['xor_0_2_000_o',
+              'xor_0_2_001_o',
               ...
-              'xor_0_2_30_i',
-              'xor_0_2_31_i'],
-             ['(assert (= xor_0_2_0_o xor_0_2_0_i xor_0_2_16_i))',
-              '(assert (= xor_0_2_1_o xor_0_2_1_i xor_0_2_17_i))',
+              'xor_0_2_030_i',
+              'xor_0_2_031_i'],
+             ['(assert (= xor_0_2_000_o xor_0_2_000_i xor_0_2_016_i))',
+              '(assert (= xor_0_2_001_o xor_0_2_001_i xor_0_2_017_i))',
               ...
-              '(assert (= xor_0_2_14_o xor_0_2_14_i xor_0_2_30_i))',
-              '(assert (= xor_0_2_15_o xor_0_2_15_i xor_0_2_31_i))'])
+              '(assert (= xor_0_2_014_o xor_0_2_014_i xor_0_2_030_i))',
+              '(assert (= xor_0_2_015_o xor_0_2_015_i xor_0_2_031_i))'])
         """
-        _, input_bit_ids = self._generate_component_input_ids()
+        _, input_ids = self._generate_component_input_ids()
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
-        output_bit_len, output_bit_ids = self._generate_output_ids(suffix=out_suffix)
-        bit_ids = output_bit_ids + input_bit_ids
+        output_len, output_ids = self._generate_output_ids(suffix=out_suffix)
+        bit_ids = output_ids + input_ids
         constraints = []
-        for i in range(output_bit_len):
-            equation = smt_utils.smt_equivalent(bit_ids[i::output_bit_len])
+        for i in range(output_len):
+            equation = smt_utils.smt_equivalent(bit_ids[i::output_len])
             constraints.append(smt_utils.smt_assert(equation))
-        result = bit_ids, constraints
 
-        return result
-
-    def cp_transform_xor_components_for_first_step(self, model):
-        """
-        Transform a XOR component into components involving only one byte for CP.
-
-        INPUT:
-
-        - ``model`` -- **model object**; a model instance
-
-        EXAMPLES::
-
-            sage: from claasp.ciphers.block_ciphers.aes_block_cipher import AESBlockCipher
-            sage: from claasp.cipher_modules.models.cp.cp_model import CpModel
-            sage: aes = AESBlockCipher(number_of_rounds=3)
-            sage: cp = CpModel(aes)
-            sage: xor_component = aes.component_from(0, 31)
-            sage: xor_component.cp_transform_xor_components_for_first_step(cp)
-            (['array[0..3] of var 0..1: xor_0_31;'], [])
-        """
-        output_size = int(self.output_bit_size)
-        input_id_link = self.input_id_links
-        output_id_link = self.id
-        input_bit_positions = self.input_bit_positions
-        description = self.description
-        numadd = description[1]
-        numb_of_inp = len(input_id_link)
-        all_inputs = []
-        cp_declarations = [f'array[0..{(output_size - 1) // model.word_size}] of var 0..1: {output_id_link};']
-        number_of_mix = 0
-        is_mix = False
-        for i in range(numb_of_inp):
-            for j in range(len(input_bit_positions[i]) // model.word_size):
-                all_inputs.append([input_id_link[i], input_bit_positions[i][j * model.word_size] // model.word_size])
-            rem = len(input_bit_positions[i]) % model.word_size
-            if rem != 0:
-                rem = model.word_size - (len(input_bit_positions[i]) % model.word_size)
-                all_inputs.append([f'{output_id_link}_i', number_of_mix])
-                number_of_mix += 1
-                is_mix = True
-                l = 1
-                while rem > 0:
-                    length = len(input_bit_positions[i + l])
-                    del input_bit_positions[i + l][0:rem]
-                    rem -= length
-                    l += 1
-        if is_mix:
-            cp_declarations.append(f'array[0..{number_of_mix - 1}] of var 0..1: {output_id_link}_i;')
-        all_inputs += [[output_id_link, i] for i in range(output_size // model.word_size)]
-        input_len = output_size // model.word_size
-        for i in range(input_len):
-            input_bit_positions, input_id_link = \
-                get_transformed_xor_input_links_and_positions(model.word_size, all_inputs, i,
-                                                              input_len, numadd, numb_of_inp)
-            input_bits = 0
-            for input_bit in input_bit_positions:
-                input_bits += len(input_bit)
-            xor_component = XOR("", "", input_id_link, input_bit_positions, input_bits)
-            xor_component.set_description(['XOR', numadd + 1])
-            model.list_of_xor_components.append(xor_component)
-        cp_constraints = []
-
-        return cp_declarations, cp_constraints
+        return bit_ids, constraints
