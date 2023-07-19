@@ -22,6 +22,27 @@ from claasp.cipher_modules.models.smt.utils import utils as smt_utils
 from claasp.cipher_modules.models.sat.utils import utils as sat_utils
 
 
+def cms_modadd(output_ids, input0_ids, input1_ids, carry_ids):
+    # The CMS modular addition between 2 addenda
+    constraints = []
+    for carry_id, input0_id, input1_id, previous_carry_id in zip(carry_ids, input0_ids[1:],
+                                                                 input1_ids[1:], carry_ids[1:]):
+        constraints.extend(sat_utils.cnf_carry(carry_id, input0_id, input1_id, previous_carry_id))
+    constraints.extend(sat_utils.cnf_and(carry_ids[-1], (input0_ids[-1], input1_ids[-1])))
+    for output_id, input0_id, input1_id, carry_id in zip(output_ids, input0_ids, input1_ids, carry_ids):
+        constraints.append(f'x -{output_id} {input0_id} {input1_id} {carry_id}')
+    constraints.append(f'x -{output_ids[-1]} {input0_ids[-1]} {input1_ids[-1]}')
+    return constraints
+
+
+def cms_modadd_seq(outputs_ids, inputs_ids, carries_ids):
+    # The CMS modular addition between more than 2 addenda
+    constraints = cms_modadd(outputs_ids[0], inputs_ids[0], inputs_ids[1], carries_ids[0])
+    for i in range(1, len(outputs_ids)):
+        constraints.extend(cms_modadd(outputs_ids[i], outputs_ids[i - 1], inputs_ids[i + 1], carries_ids[i]))
+    return constraints
+
+
 def cp_twoterms(input_1, input_2, out, input_length, cp_constraints, cp_declarations):
     cp_declarations.append(f'array[1..{input_length - 1}] of var 0..1: carry_{out};')
     for i in range(1, input_length - 1):
@@ -39,24 +60,58 @@ def cp_twoterms(input_1, input_2, out, input_length, cp_constraints, cp_declarat
     return cp_declarations, cp_constraints
 
 
-def sat_modadd(out_ids, in_ids_0, in_ids_1, carries, intermediates):
+def sat_modadd(output_ids, input0_ids, input1_ids, carry_ids, intermediate_ids):
     # The SAT modular addition between 2 addenda
-    cnf = []
-    for i, carry in enumerate(carries[:-1]):
-        cnf.extend(sat_utils.cnf_carry(carry, in_ids_0[i + 1], in_ids_1[i + 1], carries[i + 1]))
-    cnf.extend(sat_utils.cnf_and(carries[-1], (in_ids_0[-1], in_ids_1[-1])))
-    for i, out_id in enumerate(out_ids[:-1]):
-        cnf.extend(sat_utils.cnf_result(out_id, in_ids_0[i], in_ids_1[i], carries[i], intermediates[i]))
-    cnf.extend(sat_utils.cnf_xor(out_ids[-1], [in_ids_0[-1], in_ids_1[-1]]))
-    return cnf
+    constraints = []
+    for carry_id, input0_id, input1_id, previous_carry_id in zip(carry_ids, input0_ids[1:],
+                                                                 input1_ids[1:], carry_ids[1:]):
+        constraints.extend(sat_utils.cnf_carry(carry_id, input0_id, input1_id, previous_carry_id))
+    constraints.extend(sat_utils.cnf_and(carry_ids[-1], (input0_ids[-1], input1_ids[-1])))
+    for output_id, input0_id, input1_id, carry_id, intermediate_id in zip(output_ids, input0_ids, input1_ids,
+                                                                          carry_ids, intermediate_ids):
+        constraints.extend(sat_utils.cnf_result(output_id, input0_id, input1_id, carry_id, intermediate_id))
+    constraints.extend(sat_utils.cnf_xor(output_ids[-1], [input0_ids[-1], input1_ids[-1]]))
+    return constraints
 
 
-def sat_modadd_seq(out_ids, in_ids, carries, intermediates):
+def sat_modadd_seq(outputs_ids, inputs_ids, carries_ids, intermediates_ids):
     # The SAT modular addition between more than 2 addenda
-    cnf = sat_modadd(out_ids[0], in_ids[0], in_ids[1], carries[0], intermediates[0])
-    for i in range(1, len(out_ids)):
-        cnf.extend(sat_modadd(out_ids[i], out_ids[i - 1], in_ids[i + 1], carries[i], intermediates[i]))
-    return cnf
+    constraints = sat_modadd(outputs_ids[0], inputs_ids[0], inputs_ids[1], carries_ids[0], intermediates_ids[0])
+    for i in range(1, len(outputs_ids)):
+        constraints.extend(sat_modadd(outputs_ids[i], outputs_ids[i - 1], inputs_ids[i + 1],
+                                      carries_ids[i], intermediates_ids[i]))
+    return constraints
+
+
+def smt_modadd(output_ids, input0_ids, input1_ids, carry_ids):
+    # The SMT modular addition between 2 addenda
+    # carries
+    constraints = []
+    for carry_id, input0_id, input1_id, previous_carry_id in zip(carry_ids, input0_ids[1:],
+                                                                 input1_ids[1:], carry_ids[1:]):
+        operation = smt_utils.smt_carry(input0_id, input1_id, previous_carry_id)
+        equation = smt_utils.smt_equivalent((carry_id, operation))
+        constraints.append(smt_utils.smt_assert(equation))
+    operation = smt_utils.smt_and((input0_ids[-1], input1_ids[-1]))
+    equation = smt_utils.smt_equivalent((carry_ids[-1], operation))
+    constraints.append(smt_utils.smt_assert(equation))
+    # result
+    for output_id, input0_id, input1_id, carry_id in zip(output_ids, input0_ids, input1_ids, carry_ids):
+        operation = smt_utils.smt_xor((input0_id, input1_id, carry_id))
+        equation = smt_utils.smt_equivalent((output_id, operation))
+        constraints.append(smt_utils.smt_assert(equation))
+    operation = smt_utils.smt_xor((input0_ids[-1], input1_ids[-1]))
+    equation = smt_utils.smt_equivalent((output_ids[-1], operation))
+    constraints.append(smt_utils.smt_assert(equation))
+    return constraints
+
+
+def smt_modadd_seq(outputs_ids, inputs_ids, carries_ids):
+    # The SMT modular addition between more than 2 addenda
+    constraints = smt_modadd(outputs_ids[0], inputs_ids[0], inputs_ids[1], carries_ids[0])
+    for i in range(1, len(outputs_ids)):
+        constraints.extend(smt_modadd(outputs_ids[i], outputs_ids[i - 1], inputs_ids[i + 1], carries_ids[i]))
+    return constraints
 
 
 class MODADD(Modular):
@@ -93,12 +148,10 @@ class MODADD(Modular):
         ninput_bits = self.input_bit_size
         noutput_bits = word_size = self.output_bit_size
 
-        input_vars = [component_id + "_" + model.input_postfix + str(i) for i in range(ninput_bits)]
-        output_vars = [component_id + "_" + model.output_postfix + str(i) for i in range(noutput_bits)]
-        carries_vars = \
-            [[component_id + "_" + "c" + str(n) + "_" + str(i) for i in range(word_size)] for n in range(nadditions)]
-        aux_outputs_vars = [[component_id + "_" + "o" + str(n) + "_" + str(i) for i in range(word_size)] for n in
-                            range(nadditions - 1)]
+        input_vars = [f'{component_id}_{model.input_postfix}{i}' for i in range(ninput_bits)]
+        output_vars = [f'{component_id}_{model.output_postfix}{i}' for i in range(noutput_bits)]
+        carries_vars = [[f'{component_id}_c{n}_{i}' for i in range(word_size)] for n in range(nadditions)]
+        aux_outputs_vars = [[f'{component_id}_o{n}_{i}' for i in range(word_size)] for n in range(nadditions - 1)]
         ring_R = model.ring()
 
         input_vars = list(map(ring_R, input_vars))
@@ -152,38 +205,30 @@ class MODADD(Modular):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: modadd_component = speck.component_from(0,1)
             sage: modadd_component.cms_constraints()
-            (['carry_modadd_0_1_0',
-              'carry_modadd_0_1_1',
-              'carry_modadd_0_1_2',
+            (['carry_000_modadd_0_1_000',
+              'carry_000_modadd_0_1_001',
+              'carry_000_modadd_0_1_002',
               ...
-              'x -modadd_0_1_13 rot_0_0_13 plaintext_29 carry_modadd_0_1_13',
-              'x -modadd_0_1_14 rot_0_0_14 plaintext_30 carry_modadd_0_1_14',
-              'x -modadd_0_1_15 rot_0_0_15 plaintext_31'])
+              'x -modadd_0_1_013 rot_0_0_013 plaintext_029 carry_000_modadd_0_1_013',
+              'x -modadd_0_1_014 rot_0_0_014 plaintext_030 carry_000_modadd_0_1_014',
+              'x -modadd_0_1_015 rot_0_0_015 plaintext_031'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
-        carry_bit_ids = [f'carry_{output_bit_ids[i]}' for i in range(output_bit_len - 1)]
-        constraints = []
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
+        num_of_addenda = self.description[1]
+        # reformat of the in_ids
+        inputs_ids = [input_ids[i * output_len: (i + 1) * output_len] for i in range(num_of_addenda)]
         # carries
-        for i in range(output_bit_len - 2):
-            constraints.extend(sat_utils.cnf_carry(carry_bit_ids[i],
-                                                   input_bit_ids[i + 1],
-                                                   input_bit_ids[output_bit_len + i + 1],
-                                                   carry_bit_ids[i + 1]))
-        constraints.extend(sat_utils.cnf_and(carry_bit_ids[output_bit_len - 2],
-                                             (input_bit_ids[output_bit_len - 1],
-                                              input_bit_ids[2 * output_bit_len - 1])))
-        # results for CryptoMiniSat can be implemented using the leading x
-        for i in range(output_bit_len - 1):
-            constraints.append(f'x -{output_bit_ids[i]} '
-                               f'{input_bit_ids[i]} '
-                               f'{input_bit_ids[output_bit_len + i]} '
-                               f'{carry_bit_ids[i]}')
-        constraints.append(f'x -{output_bit_ids[output_bit_len - 1]} '
-                           f'{input_bit_ids[output_bit_len - 1]} '
-                           f'{input_bit_ids[2 * output_bit_len - 1]}')
-
-        return carry_bit_ids + output_bit_ids, constraints
+        carries_ids = [[f'carry_{i:03}_{output_id}' for output_id in output_ids[:-1]]
+                       for i in range(num_of_addenda - 1)]
+        # reformat of the outputs_ids
+        outputs_ids = [[f'modadd_output_{i:03}_{output_id}' for output_id in output_ids]
+                       for i in range(num_of_addenda - 2)] + [output_ids]
+        constraints = cms_modadd_seq(outputs_ids, inputs_ids, carries_ids)
+        # flattening lists
+        ids = [carry_id for carry_ids in carries_ids for carry_id in carry_ids]
+        ids.extend([output_id for output_ids in outputs_ids for output_id in output_ids])
+        return ids, constraints
 
     def cp_constraints(self):
         """
@@ -279,34 +324,34 @@ class MODADD(Modular):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: modadd_component = speck.component_from(0, 1)
             sage: modadd_component.sat_constraints()
-            (['carry_modadd_0_1_0',
-              'carry_modadd_0_1_1',
-              'carry_modadd_0_1_2',
+            (['carry_000_modadd_0_1_000',
+              'carry_000_modadd_0_1_001',
+              'carry_000_modadd_0_1_002',
               ...
-              'modadd_0_1_15 -rot_0_0_15 plaintext_31',
-              'modadd_0_1_15 rot_0_0_15 -plaintext_31',
-              '-modadd_0_1_15 -rot_0_0_15 -plaintext_31'])
+              'modadd_0_1_015 -rot_0_0_015 plaintext_031',
+              'modadd_0_1_015 rot_0_0_015 -plaintext_031',
+              '-modadd_0_1_015 -rot_0_0_015 -plaintext_031'])
         """
-        input_bit_len, input_bit_ids = self._generate_input_ids()
-        _, output_bit_ids = self._generate_output_ids()
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
         num_of_addenda = self.description[1]
-        constraints = []
         # reformat of the in_ids
-        word_size = input_bit_len // num_of_addenda
-        input_bit_ids = [input_bit_ids[i * word_size: (i + 1) * word_size]
-                         for i in range(num_of_addenda)]
+        inputs_ids = [input_ids[i * output_len: (i + 1) * output_len] for i in range(num_of_addenda)]
         # carries
-        carry_bit_ids = [[f'carry_{i:03}_{output_bit_id}' for output_bit_id in output_bit_ids[:-1]]
-                         for i in range(num_of_addenda - 1)]
+        carries_ids = [[f'carry_{i:03}_{output_id}' for output_id in output_ids[:-1]]
+                       for i in range(num_of_addenda - 1)]
         # intermediates
-        intermediates_ids = [[f'modadd_intermediate_{i:03}_{output_bit_id}' for output_bit_id in output_bit_ids]
+        intermediates_ids = [[f'modadd_intermediate_{i:03}_{output_id}' for output_id in output_ids]
                              for i in range(num_of_addenda - 1)]
-        # reformat of the out_ids
-        output_bit_ids = [[f'modadd_output_{i:03}_{output_bit_id}' for output_bit_id in output_bit_ids]
-                          for i in range(num_of_addenda - 2)] + [output_bit_ids]
-        constraints.extend(sat_modadd_seq(output_bit_ids, input_bit_ids, carry_bit_ids, intermediates_ids))
-
-        return carry_bit_ids + intermediates_ids + output_bit_ids, constraints
+        # reformat of the outputs_ids
+        outputs_ids = [[f'modadd_output_{i:03}_{output_id}' for output_id in output_ids]
+                       for i in range(num_of_addenda - 2)] + [output_ids]
+        constraints = sat_modadd_seq(outputs_ids, inputs_ids, carries_ids, intermediates_ids)
+        # flattening lists
+        ids = [carry_id for carry_ids in carries_ids for carry_id in carry_ids]
+        ids.extend([intermediate_id for intermediate_ids in intermediates_ids for intermediate_id in intermediate_ids])
+        ids.extend([output_id for output_ids in outputs_ids for output_id in output_ids])
+        return ids, constraints
 
     def smt_constraints(self):
         """
@@ -326,54 +371,30 @@ class MODADD(Modular):
             sage: tea = TeaBlockCipher(number_of_rounds=3)
             sage: modadd_component = tea.component_from(0, 1)
             sage: modadd_component.smt_constraints()
-            (['carry_modadd_0_1_0',
-              'carry_modadd_0_1_1',
+            (['carry_000_modadd_0_1_000',
+              'carry_000_modadd_0_1_001',
               ...
-              'carry_modadd_0_1_29',
-              'carry_modadd_0_1_30',
-              'modadd_0_1_0',
-              'modadd_0_1_1',
+              'modadd_0_1_030',
+              'modadd_0_1_031'],
+             ['(assert (= carry_000_modadd_0_1_000 (or (and shift_0_0_001 key_001) (and shift_0_0_001 carry_000_modadd_0_1_001) (and key_001 carry_000_modadd_0_1_001))))',
+              '(assert (= carry_000_modadd_0_1_001 (or (and shift_0_0_002 key_002) (and shift_0_0_002 carry_000_modadd_0_1_002) (and key_002 carry_000_modadd_0_1_002))))',
               ...
-              'modadd_0_1_30',
-              'modadd_0_1_31'],
-             ['(assert (= carry_modadd_0_1_0 (or (and shift_0_0_1 key_1) (and shift_0_0_1 carry_modadd_0_1_1) (and key_1 carry_modadd_0_1_1))))',
-              '(assert (= carry_modadd_0_1_1 (or (and shift_0_0_2 key_2) (and shift_0_0_2 carry_modadd_0_1_2) (and key_2 carry_modadd_0_1_2))))',
-              ...
-              '(assert (= carry_modadd_0_1_29 (or (and shift_0_0_30 key_30) (and shift_0_0_30 carry_modadd_0_1_30) (and key_30 carry_modadd_0_1_30))))',
-              '(assert (= carry_modadd_0_1_30 (and shift_0_0_31 key_31)))',
-              '(assert (= modadd_0_1_0 (xor shift_0_0_0 key_0 carry_modadd_0_1_0)))',
-              '(assert (= modadd_0_1_1 (xor shift_0_0_1 key_1 carry_modadd_0_1_1)))',
-              ...
-              '(assert (= modadd_0_1_30 (xor shift_0_0_30 key_30 carry_modadd_0_1_30)))',
-              '(assert (= modadd_0_1_31 (xor shift_0_0_31 key_31)))'])
+              '(assert (= modadd_0_1_030 (xor shift_0_0_030 key_030 carry_000_modadd_0_1_030)))',
+              '(assert (= modadd_0_1_031 (xor shift_0_0_031 key_031)))'])
         """
-        _, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
-        carry_bit_ids = [f'carry_{output_bit_ids[i]}' for i in range(output_bit_len - 1)]
-        constraints = []
-
+        _, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
+        num_of_addenda = self.description[1]
+        # reformat of the in_ids
+        inputs_ids = [input_ids[i * output_len: (i + 1) * output_len] for i in range(num_of_addenda)]
         # carries
-        for i in range(output_bit_len - 2):
-            operation = smt_utils.smt_carry(input_bit_ids[i + 1],
-                                            input_bit_ids[output_bit_len + i + 1],
-                                            carry_bit_ids[i + 1])
-            equation = smt_utils.smt_equivalent((carry_bit_ids[i], operation))
-            constraints.append(smt_utils.smt_assert(equation))
-        operation = smt_utils.smt_and((input_bit_ids[output_bit_len - 1],
-                                       input_bit_ids[2 * output_bit_len - 1]))
-        equation = smt_utils.smt_equivalent((carry_bit_ids[output_bit_len - 2], operation))
-        constraints.append(smt_utils.smt_assert(equation))
-
-        # results
-        for i in range(output_bit_len - 1):
-            operation = smt_utils.smt_xor((input_bit_ids[i],
-                                           input_bit_ids[output_bit_len + i],
-                                           carry_bit_ids[i]))
-            equation = smt_utils.smt_equivalent((output_bit_ids[i], operation))
-            constraints.append(smt_utils.smt_assert(equation))
-        operation = smt_utils.smt_xor((input_bit_ids[output_bit_len - 1],
-                                       input_bit_ids[2 * output_bit_len - 1]))
-        equation = smt_utils.smt_equivalent((output_bit_ids[output_bit_len - 1], operation))
-        constraints.append(smt_utils.smt_assert(equation))
-
-        return carry_bit_ids + output_bit_ids, constraints
+        carries_ids = [[f'carry_{i:03}_{output_id}' for output_id in output_ids[:-1]]
+                       for i in range(num_of_addenda - 1)]
+        # reformat of the outputs_ids
+        outputs_ids = [[f'modadd_output_{i:03}_{output_id}' for output_id in output_ids]
+                       for i in range(num_of_addenda - 2)] + [output_ids]
+        constraints = smt_modadd_seq(outputs_ids, inputs_ids, carries_ids)
+        # flattening lists
+        ids = [carry_id for carry_ids in carries_ids for carry_id in carry_ids]
+        ids.extend([output_id for output_ids in outputs_ids for output_id in output_ids])
+        return ids, constraints
