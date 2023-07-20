@@ -607,9 +607,8 @@ class Rotate(Component):
         constraints = []
         for i in range(output_bit_len):
             constraints.extend(sat_utils.cnf_equivalent([output_bit_ids[i], input_bit_ids_rotated[i]]))
-        result = input_bit_ids + output_bit_ids, constraints
 
-        return result
+        return input_bit_ids + output_bit_ids, constraints
 
     def smt_constraints(self):
         """
@@ -687,6 +686,5 @@ class Rotate(Component):
         for i in range(output_bit_len):
             equation = smt_utils.smt_equivalent([output_bit_ids[i], input_bit_ids_rotated[i]])
             constraints.append(smt_utils.smt_assert(equation))
-        result = input_bit_ids + output_bit_ids, constraints
 
-        return result
+        return input_bit_ids + output_bit_ids, constraints

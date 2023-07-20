@@ -60,8 +60,8 @@ def get_component_value(component, suffix, output_bit_size, var_dict):
     value = 0
     for i in range(output_bit_size):
         value <<= 1
-        if f'{component.id}_{i:03}{suffix}' in var_dict:
-            value ^= var_dict[f'{component.id}_{i:03}{suffix}']
+        if f'{component.id}_{i}{suffix}' in var_dict:
+            value ^= var_dict[f'{component.id}_{i}{suffix}']
     return value
 
 
@@ -138,7 +138,7 @@ class SmtModel:
         input_id_link = component.id
         in_suffix = constants.INPUT_BIT_ID_SUFFIX
         input_bit_size = component.input_bit_size
-        input_bit_ids = [f'{input_id_link}_{i:03}{in_suffix}' for i in range(input_bit_size)]
+        input_bit_ids = [f'{input_id_link}_{i}{in_suffix}' for i in range(input_bit_size)]
 
         return input_bit_size, input_bit_ids
 
@@ -147,14 +147,14 @@ class SmtModel:
         input_bit_positions = component.input_bit_positions
         input_bit_ids = []
         for link, positions in zip(input_id_link, input_bit_positions):
-            input_bit_ids.extend([f'{link}_{j:03}{suffix}' for j in positions])
+            input_bit_ids.extend([f'{link}_{j}{suffix}' for j in positions])
 
         return component.input_bit_size, input_bit_ids
 
     def _generate_output_ids(self, component, suffix=''):
         output_id_link = component.id
         output_bit_size = component.output_bit_size
-        output_bit_ids = [f'{output_id_link}_{j:03}{suffix}' for j in range(output_bit_size)]
+        output_bit_ids = [f'{output_id_link}_{j}{suffix}' for j in range(output_bit_size)]
 
         return output_bit_size, output_bit_ids
 
@@ -298,7 +298,7 @@ class SmtModel:
              'key_62',
              'key_63']
         """
-        cipher_input_bit_ids = [f'{input_id}_{j:03}'
+        cipher_input_bit_ids = [f'{input_id}_{j}'
                                 for input_id, size in zip(self._cipher.inputs, self._cipher.inputs_bit_size)
                                 for j in range(size)]
 
@@ -355,7 +355,7 @@ class SmtModel:
             weight = 0
             if model_type != CIPHER and (('MODADD' in component.description) or ('AND' in component.description) or
                                          ('OR' in component.description) or (SBOX in component.type)):
-                weight = sum([var_dict[f'hw_{component.id}_{i:03}{out_suffix}'] for i in range(output_bit_size)])
+                weight = sum([var_dict[f'hw_{component.id}_{i}{out_suffix}'] for i in range(output_bit_size)])
             component_value = set_component_fields(hex_value, weight)
             components_values[f'{component.id}{out_suffix}'] = component_value
             total_weight += weight
@@ -374,8 +374,8 @@ class SmtModel:
             value = 0
             for i in range(bit_size):
                 value <<= 1
-                if f'{cipher_input}_{i:03}{out_suffix}' in var_dict:
-                    value ^= var_dict[f'{cipher_input}_{i:03}{out_suffix}']
+                if f'{cipher_input}_{i}{out_suffix}' in var_dict:
+                    value ^= var_dict[f'{cipher_input}_{i}{out_suffix}']
             width = bit_size // 4 + (bit_size % 4 != 0)
             hex_value = f'{value:0{width}x}'
             components_values[cipher_input] = set_component_fields(hex_value)
@@ -420,9 +420,9 @@ class SmtModel:
     def update_constraints_for_equal_type(self, bit_positions, bit_values, component_id, constraints, out_suffix=""):
         for i, position in enumerate(bit_positions):
             if bit_values[i]:
-                constraint = f'{component_id}_{position:03}{out_suffix}'
+                constraint = f'{component_id}_{position}{out_suffix}'
             else:
-                constraint = utils.smt_not(f'{component_id}_{position:03}{out_suffix}')
+                constraint = utils.smt_not(f'{component_id}_{position}{out_suffix}')
             constraints.append(utils.smt_assert(constraint))
 
     def update_constraints_for_not_equal_type(self, bit_positions, bit_values,
@@ -430,9 +430,9 @@ class SmtModel:
         literals = []
         for i, position in enumerate(bit_positions):
             if bit_values[i]:
-                literals.append(utils.smt_not(f'{component_id}_{position:03}{out_suffix}'))
+                literals.append(utils.smt_not(f'{component_id}_{position}{out_suffix}'))
             else:
-                literals.append(f'{component_id}_{position:03}{out_suffix}')
+                literals.append(f'{component_id}_{position}{out_suffix}')
         constraints.append(utils.smt_assert(utils.smt_or(literals)))
 
     def solve(self, model_type, solver_name='z3'):

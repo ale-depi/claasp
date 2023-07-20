@@ -76,13 +76,13 @@ class MODSUB(Modular):
             sage: raiden = RaidenBlockCipher(number_of_rounds=3)
             sage: modsub_component = raiden.component_from(0, 7)
             sage: modsub_component.cms_constraints()
-            (['twocomp_carry_plaintext_032',
-              'twocomp_carry_plaintext_033',
-              'twocomp_carry_plaintext_034',
+            (['twocomp_carry_plaintext_32',
+              'twocomp_carry_plaintext_33',
+              'twocomp_carry_plaintext_34',
               ...
-              'x -modsub_0_7_029 modadd_0_4_029 twocomp_result_plaintext_061 carry_modsub_0_7_029',
-              'x -modsub_0_7_030 modadd_0_4_030 twocomp_result_plaintext_062 carry_modsub_0_7_030',
-              'x -modsub_0_7_031 modadd_0_4_031 twocomp_result_plaintext_063'])
+              'x -modsub_0_7_29 modadd_0_4_29 twocomp_result_plaintext_61 carry_modsub_0_7_29',
+              'x -modsub_0_7_30 modadd_0_4_30 twocomp_result_plaintext_62 carry_modsub_0_7_30',
+              'x -modsub_0_7_31 modadd_0_4_31 twocomp_result_plaintext_63'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -190,13 +190,13 @@ class MODSUB(Modular):
             sage: raiden = RaidenBlockCipher(number_of_rounds=3)
             sage: modsub_component = raiden.component_from(0, 7)
             sage: modsub_component.sat_constraints()
-            (['twocomp_carry_plaintext_032',
-              'twocomp_carry_plaintext_033',
-              'twocomp_carry_plaintext_034',
+            (['twocomp_carry_plaintext_32',
+              'twocomp_carry_plaintext_33',
+              'twocomp_carry_plaintext_34',
               ...
-              'modsub_0_7_031 -modadd_0_4_031 twocomp_result_plaintext_063',
-              'modsub_0_7_031 modadd_0_4_031 -twocomp_result_plaintext_063',
-              '-modsub_0_7_031 -modadd_0_4_031 -twocomp_result_plaintext_063'])
+              'modsub_0_7_31 -modadd_0_4_31 twocomp_result_plaintext_63',
+              'modsub_0_7_31 modadd_0_4_31 -twocomp_result_plaintext_63',
+              '-modsub_0_7_31 -modadd_0_4_31 -twocomp_result_plaintext_63'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -227,16 +227,16 @@ class MODSUB(Modular):
             sage: raiden = RaidenBlockCipher(number_of_rounds=3)
             sage: modsub_component = raiden.component_from(0, 7)
             sage: modsub_component.smt_constraints()
-            (['twocomp_carry_plaintext_032',
-              'twocomp_carry_plaintext_033',
+            (['twocomp_carry_plaintext_32',
+              'twocomp_carry_plaintext_33',
               ...
-              'modsub_0_7_030',
-              'modsub_0_7_031'],
-             ['(assert (= twocomp_carry_plaintext_032 (and (not plaintext_033) twocomp_carry_plaintext_033)))',
-              '(assert (= twocomp_carry_plaintext_033 (and (not plaintext_034) twocomp_carry_plaintext_034)))',
+              'modsub_0_7_30',
+              'modsub_0_7_31'],
+             ['(assert (= twocomp_carry_plaintext_32 (and (not plaintext_33) twocomp_carry_plaintext_33)))',
+              '(assert (= twocomp_carry_plaintext_33 (and (not plaintext_34) twocomp_carry_plaintext_34)))',
               ...
-              '(assert (= modsub_0_7_030 (xor modadd_0_4_030 twocomp_result_plaintext_062 carry_modsub_0_7_030)))',
-              '(assert (= modsub_0_7_031 (xor modadd_0_4_031 twocomp_result_plaintext_063)))'])
+              '(assert (= modsub_0_7_30 (xor modadd_0_4_30 twocomp_result_plaintext_62 carry_modsub_0_7_30)))',
+              '(assert (= modsub_0_7_31 (xor modadd_0_4_31 twocomp_result_plaintext_63)))'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()

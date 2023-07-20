@@ -147,8 +147,8 @@ class SatModel:
             value = 0
             for i in range(bit_size):
                 value <<= 1
-                if f'{cipher_input}_{i:03}{out_suffix}' in output_values_dict:
-                    value ^= output_values_dict[f'{cipher_input}_{i:03}{out_suffix}']
+                if f'{cipher_input}_{i}{out_suffix}' in output_values_dict:
+                    value ^= output_values_dict[f'{cipher_input}_{i}{out_suffix}']
             hex_digits = bit_size // 4 + (bit_size % 4 != 0)
             hex_value = f'{value:0{hex_digits}x}'
             component = set_component_fields(hex_value)
@@ -372,7 +372,7 @@ class SatModel:
             variables_ids = []
             for position, value in zip(bit_positions, bit_values):
                 is_negative = '-' * (value ^ is_equal)
-                variables_ids.append(f'{is_negative}{component_id}_{position:03}')
+                variables_ids.append(f'{is_negative}{component_id}_{position}')
             if is_equal:
                 constraints.extend(variables_ids)
             else:
@@ -417,8 +417,8 @@ class SatModel:
         value = 0
         for i in range(output_bit_size):
             value <<= 1
-            if f'{component.id}_{i:03}{out_suffix}' in output_values_dict:
-                value ^= output_values_dict[f'{component.id}_{i:03}{out_suffix}']
+            if f'{component.id}_{i}{out_suffix}' in output_values_dict:
+                value ^= output_values_dict[f'{component.id}_{i}{out_suffix}']
         return value
 
     def calculate_component_weight(self, component, model_type, out_suffix, output_bit_size, output_values_dict):

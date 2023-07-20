@@ -205,13 +205,13 @@ class MODADD(Modular):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: modadd_component = speck.component_from(0,1)
             sage: modadd_component.cms_constraints()
-            (['carry_000_modadd_0_1_000',
-              'carry_000_modadd_0_1_001',
-              'carry_000_modadd_0_1_002',
+            (['carry_000_modadd_0_1_0',
+              'carry_000_modadd_0_1_1',
+              'carry_000_modadd_0_1_2',
               ...
-              'x -modadd_0_1_013 rot_0_0_013 plaintext_029 carry_000_modadd_0_1_013',
-              'x -modadd_0_1_014 rot_0_0_014 plaintext_030 carry_000_modadd_0_1_014',
-              'x -modadd_0_1_015 rot_0_0_015 plaintext_031'])
+              'x -modadd_0_1_13 rot_0_0_13 plaintext_29 carry_000_modadd_0_1_13',
+              'x -modadd_0_1_14 rot_0_0_14 plaintext_30 carry_000_modadd_0_1_14',
+              'x -modadd_0_1_15 rot_0_0_15 plaintext_31'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -324,13 +324,13 @@ class MODADD(Modular):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: modadd_component = speck.component_from(0, 1)
             sage: modadd_component.sat_constraints()
-            (['carry_000_modadd_0_1_000',
-              'carry_000_modadd_0_1_001',
-              'carry_000_modadd_0_1_002',
+            (['carry_0_modadd_0_1_0',
+              'carry_0_modadd_0_1_1',
+              'carry_0_modadd_0_1_2',
               ...
-              'modadd_0_1_015 -rot_0_0_015 plaintext_031',
-              'modadd_0_1_015 rot_0_0_015 -plaintext_031',
-              '-modadd_0_1_015 -rot_0_0_015 -plaintext_031'])
+              'modadd_0_1_15 -rot_0_0_15 plaintext_31',
+              'modadd_0_1_15 rot_0_0_15 -plaintext_31',
+              '-modadd_0_1_15 -rot_0_0_15 -plaintext_31'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -341,10 +341,10 @@ class MODADD(Modular):
         carries_ids = [[f'carry_{i:03}_{output_id}' for output_id in output_ids[:-1]]
                        for i in range(num_of_addenda - 1)]
         # intermediates
-        intermediates_ids = [[f'modadd_intermediate_{i:03}_{output_id}' for output_id in output_ids]
+        intermediates_ids = [[f'modadd_intermediate_{i}_{output_id}' for output_id in output_ids]
                              for i in range(num_of_addenda - 1)]
         # reformat of the outputs_ids
-        outputs_ids = [[f'modadd_output_{i:03}_{output_id}' for output_id in output_ids]
+        outputs_ids = [[f'modadd_output_{i}_{output_id}' for output_id in output_ids]
                        for i in range(num_of_addenda - 2)] + [output_ids]
         constraints = sat_modadd_seq(outputs_ids, inputs_ids, carries_ids, intermediates_ids)
         # flattening lists
@@ -371,16 +371,16 @@ class MODADD(Modular):
             sage: tea = TeaBlockCipher(number_of_rounds=3)
             sage: modadd_component = tea.component_from(0, 1)
             sage: modadd_component.smt_constraints()
-            (['carry_000_modadd_0_1_000',
-              'carry_000_modadd_0_1_001',
+            (['carry_0_modadd_0_1_0',
+              'carry_0_modadd_0_1_1',
               ...
-              'modadd_0_1_030',
-              'modadd_0_1_031'],
-             ['(assert (= carry_000_modadd_0_1_000 (or (and shift_0_0_001 key_001) (and shift_0_0_001 carry_000_modadd_0_1_001) (and key_001 carry_000_modadd_0_1_001))))',
-              '(assert (= carry_000_modadd_0_1_001 (or (and shift_0_0_002 key_002) (and shift_0_0_002 carry_000_modadd_0_1_002) (and key_002 carry_000_modadd_0_1_002))))',
+              'modadd_0_1_30',
+              'modadd_0_1_31'],
+             ['(assert (= carry_0_modadd_0_1_0 (or (and shift_0_0_1 key_1) (and shift_0_0_1 carry_0_modadd_0_1_1) (and key_1 carry_0_modadd_0_1_1))))',
+              '(assert (= carry_0_modadd_0_1_1 (or (and shift_0_0_2 key_2) (and shift_0_0_2 carry_0_modadd_0_1_2) (and key_2 carry_0_modadd_0_1_2))))',
               ...
-              '(assert (= modadd_0_1_030 (xor shift_0_0_030 key_030 carry_000_modadd_0_1_030)))',
-              '(assert (= modadd_0_1_031 (xor shift_0_0_031 key_031)))'])
+              '(assert (= modadd_0_1_30 (xor shift_0_0_30 key_30 carry_0_modadd_0_1_30)))',
+              '(assert (= modadd_0_1_31 (xor shift_0_0_31 key_31)))'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -388,10 +388,10 @@ class MODADD(Modular):
         # reformat of the in_ids
         inputs_ids = [input_ids[i * output_len: (i + 1) * output_len] for i in range(num_of_addenda)]
         # carries
-        carries_ids = [[f'carry_{i:03}_{output_id}' for output_id in output_ids[:-1]]
+        carries_ids = [[f'carry_{i}_{output_id}' for output_id in output_ids[:-1]]
                        for i in range(num_of_addenda - 1)]
         # reformat of the outputs_ids
-        outputs_ids = [[f'modadd_output_{i:03}_{output_id}' for output_id in output_ids]
+        outputs_ids = [[f'modadd_output_{i}_{output_id}' for output_id in output_ids]
                        for i in range(num_of_addenda - 2)] + [output_ids]
         constraints = smt_modadd_seq(outputs_ids, inputs_ids, carries_ids)
         # flattening lists

@@ -375,7 +375,8 @@ class XOR(Component):
 
     def cp_wordwise_deterministic_truncated_xor_differential_constraints(self, model):
         r"""
-        Return lists declarations and constraints for XOR component CP wordwise deterministic truncated XOR differential model.
+        Return lists declarations and constraints for XOR component CP wordwise
+        deterministic truncated XOR differential model.
 
         INPUT:
 
@@ -528,9 +529,8 @@ class XOR(Component):
         for i in range(output_size):
             cp_constraints.extend([f'constraint {output_id_link}_o[{i}] = {output_id_link}_i[{i + input_len * j}];'
                                    for j in range(num_of_addenda)])
-        result = cp_declarations, cp_constraints
 
-        return result
+        return cp_declarations, cp_constraints
 
     def get_bit_based_vectorized_python_code(self, params, convert_output_to_bytes):
         return [f'  {self.id} = bit_vector_XOR([{",".join(params)} ], {self.description[1]}, {self.output_bit_size})']
@@ -562,7 +562,6 @@ class XOR(Component):
     def milp_constraints(self, model):
         """
         Return a list of variables and a list of constrains modeling a component of type XOR for MILP CIPHER model.
-
 
         INPUT:
 
@@ -650,7 +649,7 @@ class XOR(Component):
         x = model.binary_variable
         output_bit_size = self.output_bit_size
         ind_input_vars, ind_output_vars = self._get_independent_input_output_variables()
-        input_vars, output_vars = self._get_input_output_variables()
+        input_vars, _ = self._get_input_output_variables()
 
         variables = [(f"x[{var}]", x[var]) for var in ind_input_vars + ind_output_vars]
         constraints = []
@@ -762,13 +761,13 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.sat_constraints()
-            (['xor_0_2_000',
-              'xor_0_2_001',
-              'xor_0_2_002',
+            (['xor_0_2_0',
+              'xor_0_2_1',
+              'xor_0_2_2',
               ...
-              'xor_0_2_015 -modadd_0_1_015 key_063',
-              'xor_0_2_015 modadd_0_1_015 -key_063',
-              '-xor_0_2_015 -modadd_0_1_015 -key_063'])
+              'xor_0_2_15 -modadd_0_1_15 key_63',
+              'xor_0_2_15 modadd_0_1_15 -key_63',
+              '-xor_0_2_15 -modadd_0_1_15 -key_63'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -801,13 +800,13 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.sat_xor_linear_mask_propagation_constraints()
-            (['xor_0_2_000_i',
-              'xor_0_2_001_i',
-              'xor_0_2_002_i',
+            (['xor_0_2_0_i',
+              'xor_0_2_1_i',
+              'xor_0_2_2_i',
               ...
-              'xor_0_2_015_i -xor_0_2_015_o',
-              'xor_0_2_031_i -xor_0_2_015_i',
-              'xor_0_2_015_o -xor_0_2_031_i'])
+              'xor_0_2_15_i -xor_0_2_15_o',
+              'xor_0_2_31_i -xor_0_2_15_i',
+              'xor_0_2_15_o -xor_0_2_31_i'])
         """
         _, input_ids = self._generate_component_input_ids()
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
@@ -833,16 +832,16 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.smt_constraints()
-            (['xor_0_2_000',
-              'xor_0_2_001',
+            (['xor_0_2_0',
+              'xor_0_2_1',
               ...
-              'xor_0_2_014',
-              'xor_0_2_015'],
-             ['(assert (= xor_0_2_000 (xor modadd_0_1_000 key_048)))',
-              '(assert (= xor_0_2_001 (xor modadd_0_1_001 key_049)))',
+              'xor_0_2_14',
+              'xor_0_2_15'],
+             ['(assert (= xor_0_2_0 (xor modadd_0_1_0 key_48)))',
+              '(assert (= xor_0_2_1 (xor modadd_0_1_1 key_49)))',
               ...
-              '(assert (= xor_0_2_014 (xor modadd_0_1_014 key_062)))',
-              '(assert (= xor_0_2_015 (xor modadd_0_1_015 key_063)))'])
+              '(assert (= xor_0_2_14 (xor modadd_0_1_14 key_62)))',
+              '(assert (= xor_0_2_15 (xor modadd_0_1_15 key_63)))'])
         """
         _, input_ids = self._generate_input_ids()
         output_len, output_ids = self._generate_output_ids()
@@ -871,16 +870,16 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0, 2)
             sage: xor_component.smt_xor_linear_mask_propagation_constraints()
-            (['xor_0_2_000_o',
-              'xor_0_2_001_o',
+            (['xor_0_2_0_o',
+              'xor_0_2_1_o',
               ...
-              'xor_0_2_030_i',
-              'xor_0_2_031_i'],
-             ['(assert (= xor_0_2_000_o xor_0_2_000_i xor_0_2_016_i))',
-              '(assert (= xor_0_2_001_o xor_0_2_001_i xor_0_2_017_i))',
+              'xor_0_2_30_i',
+              'xor_0_2_31_i'],
+             ['(assert (= xor_0_2_0_o xor_0_2_0_i xor_0_2_16_i))',
+              '(assert (= xor_0_2_1_o xor_0_2_1_i xor_0_2_17_i))',
               ...
-              '(assert (= xor_0_2_014_o xor_0_2_014_i xor_0_2_030_i))',
-              '(assert (= xor_0_2_015_o xor_0_2_015_i xor_0_2_031_i))'])
+              '(assert (= xor_0_2_14_o xor_0_2_14_i xor_0_2_30_i))',
+              '(assert (= xor_0_2_15_o xor_0_2_15_i xor_0_2_31_i))'])
         """
         _, input_ids = self._generate_component_input_ids()
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX

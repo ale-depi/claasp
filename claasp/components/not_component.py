@@ -346,24 +346,21 @@ class NOT(Component):
             sage: variables, constraints = not_component.milp_constraints(milp)
             sage: variables
             [('x[xor_0_2_0]', x_0),
-            ('x[xor_0_2_1]', x_1),
-            ...
-            ('x[not_0_5_62]', x_126),
-            ('x[not_0_5_63]', x_127)]
+             ('x[xor_0_2_1]', x_1),
+             ...
+             ('x[not_0_5_62]', x_126),
+             ('x[not_0_5_63]', x_127)]
             sage: constraints
             [x_0 + x_64 == 1,
-            x_1 + x_65 == 1,
-            ...
-            x_62 + x_126 == 1,
-            x_63 + x_127 == 1]
+             x_1 + x_65 == 1,
+             ...
+             x_62 + x_126 == 1,
+             x_63 + x_127 == 1]
         """
         x = model.binary_variable
-        input_bit_size = self.input_bit_size
         input_vars, output_vars = self._get_input_output_variables()
         variables = [(f"x[{var}]", x[var]) for var in input_vars + output_vars]
-        constraints = []
-        for i in range(input_bit_size):
-            constraints.append(x[output_vars[i]] + x[input_vars[i]] == 1)
+        constraints = [x[output_var] + x[input_var] == 1 for output_var, input_var in zip(output_vars, input_vars)]
 
         return variables, constraints
 
@@ -386,26 +383,23 @@ class NOT(Component):
             sage: variables, constraints = not_component.milp_xor_differential_propagation_constraints(milp)
             sage: variables
             [('x[xor_0_2_0]', x_0),
-            ('x[xor_0_2_1]', x_1),
-            ...
+             ('x[xor_0_2_1]', x_1),
+             ...
              ('x[not_0_5_62]', x_126),
              ('x[not_0_5_63]', x_127)]
             sage: constraints
             [x_64 == x_0,
              x_65 == x_1,
-            ...
+             ...
              x_126 == x_62,
              x_127 == x_63]
         """
         x = model.binary_variable
-        input_bit_size = self.input_bit_size
         input_vars, output_vars = self._get_input_output_variables()
         variables = [(f"x[{var}]", x[var]) for var in input_vars + output_vars]
-        constraints = []
-        for i in range(input_bit_size):
-            constraints.append(x[output_vars[i]] == x[input_vars[i]])
-        result = variables, constraints
-        return result
+        constraints = [x[output_var] == x[input_var] for output_var, input_var in zip(output_vars, input_vars)]
+
+        return variables, constraints
 
     def milp_xor_linear_mask_propagation_constraints(self, model):
         """
@@ -427,25 +421,22 @@ class NOT(Component):
             sage: variables
             [('x[not_0_5_0_i]', x_0),
              ('x[not_0_5_1_i]', x_1),
-            ...
+             ...
              ('x[not_0_5_62_o]', x_126),
              ('x[not_0_5_63_o]', x_127)]
             sage: constraints
             [x_64 == x_0,
              x_65 == x_1,
-            ...
+             ...
              x_126 == x_62,
              x_127 == x_63]
         """
         x = model.binary_variable
-        output_bit_size = self.output_bit_size
         input_vars, output_vars = self._get_independent_input_output_variables()
         variables = [(f"x[{var}]", x[var]) for var in input_vars + output_vars]
-        constraints = []
-        for i in range(output_bit_size):
-            constraints.append(x[output_vars[i]] == x[input_vars[i]])
-        result = variables, constraints
-        return result
+        constraints = [x[output_var] == x[input_var] for output_var, input_var in zip(input_vars, output_vars)]
+
+        return variables, constraints
 
     def sat_constraints(self):
         """
@@ -465,13 +456,13 @@ class NOT(Component):
             sage: gift = GiftPermutation(number_of_rounds=3)
             sage: not_component = gift.component_from(0, 8)
             sage: not_component.sat_constraints()
-            (['not_0_8_000',
-              'not_0_8_001',
-              'not_0_8_002',
+            (['not_0_8_0',
+              'not_0_8_1',
+              'not_0_8_2',
               ...
-              '-not_0_8_030 -xor_0_6_030',
-              'not_0_8_031 xor_0_6_031',
-              '-not_0_8_031 -xor_0_6_031'])
+              '-not_0_8_30 -xor_0_6_30',
+              'not_0_8_31 xor_0_6_31',
+              '-not_0_8_31 -xor_0_6_31'])
         """
         _, input_ids = self._generate_input_ids()
         _, output_ids = self._generate_output_ids()

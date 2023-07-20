@@ -121,8 +121,8 @@ class Component:
         output_size = self.output_bit_size
         var_names_temp = []
         if self.type != "constant":
-            var_names_temp += [component_id + "_" + input_postfix + str(i) for i in range(input_size)]
-        var_names_temp += [component_id + "_" + output_postfix + str(i) for i in range(output_size)]
+            var_names_temp += [f'{component_id}_{input_postfix}{i}' for i in range(input_size)]
+        var_names_temp += [f'{component_id}_{output_postfix}{i}' for i in range(output_size)]
         for i in range(len(var_names_temp)):
             var_definition_names.append(f'var {data_type}: {var_names_temp[i]};')
 
@@ -132,7 +132,7 @@ class Component:
         input_id_link = self.id
         in_suffix = constants.INPUT_BIT_ID_SUFFIX
         input_bit_size = self.input_bit_size
-        input_bit_ids = [f'{input_id_link}_{i:03}{in_suffix}' for i in range(input_bit_size)]
+        input_bit_ids = [f'{input_id_link}_{i}{in_suffix}' for i in range(input_bit_size)]
 
         return input_bit_size, input_bit_ids
 
@@ -141,14 +141,14 @@ class Component:
         input_bit_positions = self.input_bit_positions
         input_bit_ids = []
         for link, positions in zip(input_id_link, input_bit_positions):
-            input_bit_ids.extend([f'{link}_{j:03}{suffix}' for j in positions])
+            input_bit_ids.extend([f'{link}_{j}{suffix}' for j in positions])
 
         return self.input_bit_size, input_bit_ids
 
     def _generate_output_ids(self, suffix=''):
         output_id_link = self.id
         output_bit_size = self.output_bit_size
-        output_bit_ids = [f'{output_id_link}_{j:03}{suffix}' for j in range(output_bit_size)]
+        output_bit_ids = [f'{output_id_link}_{j}{suffix}' for j in range(output_bit_size)]
 
         return output_bit_size, output_bit_ids
 
