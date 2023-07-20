@@ -203,13 +203,13 @@ class XOR(Component):
             sage: speck = SpeckBlockCipher(number_of_rounds=3)
             sage: xor_component = speck.component_from(0,2)
             sage: xor_component.cms_constraints()
-            (['xor_0_2_0',
-              'xor_0_2_1',
-              'xor_0_2_2',
+            (['xor_0_2_000',
+              'xor_0_2_001',
+              'xor_0_2_002',
               ...
-              'x -xor_0_2_13 modadd_0_1_13 key_61',
-              'x -xor_0_2_14 modadd_0_1_14 key_62',
-              'x -xor_0_2_15 modadd_0_1_15 key_63'])
+              'x -xor_0_2_013 modadd_0_1_013 key_061',
+              'x -xor_0_2_014 modadd_0_1_014 key_062',
+              'x -xor_0_2_015 modadd_0_1_015 key_063'])
         """
         _, input_bit_ids = self._generate_input_ids()
         output_bit_len, output_bit_ids = self._generate_output_ids()
@@ -714,8 +714,8 @@ class XOR(Component):
         component_id = self.id
         ninputs = self.input_bit_size
         noutputs = self.output_bit_size
-        input_vars = [component_id + "_" + model.input_postfix + str(i) for i in range(ninputs)]
-        output_vars = [component_id + "_" + model.output_postfix + str(i) for i in range(noutputs)]
+        input_vars = [f'{component_id}_{model.input_postfix}{i}' for i in range(ninputs)]
+        output_vars = [f'{component_id}_{model.output_postfix}{i}' for i in range(noutputs)]
         ninput_words = int(self.description[1])
         word_chunk = noutputs
         new_output_vars = [input_vars[0 * word_chunk:0 * word_chunk + word_chunk]]
@@ -723,7 +723,7 @@ class XOR(Component):
             new_output_vars_temp = []
             for output_var in output_vars:
                 mzn_constraints += [f'var {model.data_type}: {output_var}_{str(i)};\n']
-                new_output_vars_temp.append(output_var + "_" + str(i))
+                new_output_vars_temp.append(f'{output_var}_{i}')
             new_output_vars.append(new_output_vars_temp)
 
         for i in range(1, ninput_words):
