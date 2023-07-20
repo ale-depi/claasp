@@ -60,8 +60,8 @@ class Rotate(Component):
 
         rotation_const = self.description[1]
         ninputs = noutputs = self.output_bit_size
-        input_vars = [self.id + "_" + model.input_postfix + str(i) for i in range(ninputs)]
-        output_vars = [self.id + "_" + model.output_postfix + str(i) for i in range(noutputs)]
+        input_vars = [f'{self.id}_{model.input_postfix}{i}' for i in range(ninputs)]
+        output_vars = [f'{self.id}_{model.output_postfix}{i}' for i in range(noutputs)]
         ring_R = model.ring()
         x = list(map(ring_R, input_vars))
         y = list(map(ring_R, output_vars))

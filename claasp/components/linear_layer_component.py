@@ -87,9 +87,8 @@ class LinearLayer(Component):
         ninputs = self.input_bit_size
         ring_R = model.ring()
         M = Matrix(ring_R, self.description, nrows=noutputs, ncols=ninputs)
-        x = vector(ring_R, (map(ring_R, [self.id + "_" + model.input_postfix + str(i) for i in range(ninputs)])))
-        y = vector(ring_R,
-                   list(map(ring_R, [self.id + "_" + model.output_postfix + str(i) for i in range(noutputs)])))
+        x = vector(ring_R, (map(ring_R, [f'{self.id}_{model.input_postfix}{i}' for i in range(ninputs)])))
+        y = vector(ring_R, list(map(ring_R, [f'{self.id}_{model.output_postfix}{i}' for i in range(noutputs)])))
 
         return (y - M * x).list()
 

@@ -132,8 +132,8 @@ class AND(MultiInputNonlinearLogicalOperator):
         noutputs = self.output_bit_size
         word_size = noutputs
         ring_R = model.ring()
-        input_vars = [self.id + "_" + model.input_postfix + str(i) for i in range(ninputs)]
-        output_vars = [self.id + "_" + model.output_postfix + str(i) for i in range(noutputs)]
+        input_vars = [f'{self.id}_{model.input_postfix}{i}' for i in range(ninputs)]
+        output_vars = [f'{self.id}_{model.output_postfix}{i}' for i in range(noutputs)]
         words_vars = [list(map(ring_R, input_vars))[i:i + word_size] for i in range(0, ninputs, word_size)]
 
         x = [ring_R.one() for _ in range(noutputs)]

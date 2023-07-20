@@ -93,7 +93,7 @@ class Constant(Component):
         constant = int(self.description[0], 16)
 
         ring_R = model.ring()
-        y = list(map(ring_R, [self.id + "_" + model.output_postfix + str(i) for i in range(noutputs)]))
+        y = list(map(ring_R, [f'{self.id}_{model.output_postfix}{i}' for i in range(noutputs)]))
 
         b = list(map(int, reversed(bin(constant)[2:])))
         b += [0] * (noutputs - len(b))
