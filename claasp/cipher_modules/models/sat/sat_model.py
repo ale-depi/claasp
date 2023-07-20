@@ -380,39 +380,6 @@ class SatModel:
 
         return constraints
 
-    def _parse_solver_output(self, model_type, output_values, dimacs_dict):
-        out_suffix = ''
-        in_suffix = ''
-        if model_type == XOR_LINEAR:
-            out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
-            in_suffix = constants.INPUT_BIT_ID_SUFFIX
-
-        output_values_dict = self._get_solver_solution_parsed(dimacs_dict, output_values)
-
-        # building cipher components
-        components_values = self._get_cipher_inputs_values(out_suffix, output_values_dict)
-        total_weight = 0
-        for component in self._cipher.get_all_components():
-            output_bit_size = component.output_bit_size
-            output_value = self.get_component_value(component, out_suffix, output_bit_size,
-                                                    output_values_dict)
-            hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
-            hex_value = f'{output_value:0{hex_digits}x}'
-            weight = self.calculate_component_weight(component, model_type, out_suffix,
-                                                     output_bit_size, output_values_dict)
-            component_value = set_component_fields(hex_value, weight)
-            components_values[f'{component.id}{out_suffix}'] = component_value
-            total_weight += weight
-            if model_type == XOR_LINEAR:
-                input_value = self.get_component_value(component, in_suffix, output_bit_size,
-                                                       output_values_dict)
-                hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
-                hex_value = f'{input_value:0{hex_digits}x}'
-                component_value = set_component_fields(hex_value, 0)
-                components_values[f'{component.id}{in_suffix}'] = component_value
-
-        return components_values, total_weight
-
     def get_component_value(self, component, out_suffix, output_bit_size, output_values_dict):
         value = 0
         for i in range(output_bit_size):
@@ -421,12 +388,10 @@ class SatModel:
                 value ^= output_values_dict[f'{component.id}_{i}{out_suffix}']
         return value
 
-    def calculate_component_weight(self, component, model_type, out_suffix, output_bit_size, output_values_dict):
+    def calculate_component_weight(self, component, out_suffix, output_bit_size, output_values_dict):
         weight = 0
-        if model_type != CIPHER and ('MODADD' in component.description or
-                                     'AND' in component.description or
-                                     'OR' in component.description or
-                                     SBOX in component.type):
+        if ('MODADD' in component.description or 'AND' in component.description
+                or 'OR' in component.description or SBOX in component.type):
             weight = sum([output_values_dict[f'hw_{component.id}_{i}{out_suffix}']
                           for i in range(output_bit_size)])
         return weight

@@ -21,7 +21,7 @@ import time
 
 from claasp.cipher_modules.models.sat.utils import constants, utils
 from claasp.cipher_modules.models.sat.sat_model import SatModel
-from claasp.cipher_modules.models.utils import get_bit_bindings
+from claasp.cipher_modules.models.utils import get_bit_bindings, set_component_fields
 from claasp.name_mappings import (CIPHER_OUTPUT, CONSTANT, INTERMEDIATE_OUTPUT, LINEAR_LAYER,
                                   MIX_COLUMN, SBOX, WORD_OPERATION, XOR_LINEAR)
 
@@ -147,7 +147,7 @@ class SatXorLinearModel(SatModel):
         solution['building_time_seconds'] = end_building_time - start_building_time
         solutions_list = []
         out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
-        while solution['total_weight'] is not None:
+        while solution['status'] == 'SATISFIABLE':
             solutions_list.append(solution)
             literals = []
             for component in self._cipher.get_all_components():
@@ -252,7 +252,7 @@ class SatXorLinearModel(SatModel):
         solution['building_time_seconds'] = end_building_time - start_building_time
         total_time = solution['solving_time_seconds']
         max_memory = solution['memory_megabytes']
-        while solution['total_weight'] is None:
+        while solution['status'] == 'UNSATISFIABLE':
             current_weight += 1
             start_building_time = time.time()
             self.build_xor_linear_trail_model(weight=current_weight, fixed_variables=fixed_values)
@@ -410,3 +410,26 @@ class SatXorLinearModel(SatModel):
 
     def weight_xor_linear_constraints(self, weight):
         return self.weight_constraints(weight)
+
+    def _parse_solver_output(self, output_values_dict):
+        out_suffix = constants.OUTPUT_BIT_ID_SUFFIX
+        in_suffix = constants.INPUT_BIT_ID_SUFFIX
+        components_values = self._get_cipher_inputs_values(out_suffix, output_values_dict)
+        total_weight = 0
+        for component in self._cipher.get_all_components():
+            output_bit_size = component.output_bit_size
+            output_value = self.get_component_value(component, out_suffix, output_bit_size, output_values_dict)
+            hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
+            hex_value = f'{output_value:0{hex_digits}x}'
+            weight = self.calculate_component_weight(component, out_suffix, output_bit_size, output_values_dict)
+            component_value = set_component_fields(hex_value, weight)
+            components_values[f'{component.id}{out_suffix}'] = component_value
+            total_weight += weight
+
+            input_value = self.get_component_value(component, in_suffix, output_bit_size, output_values_dict)
+            hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
+            hex_value = f'{input_value:0{hex_digits}x}'
+            component_value = set_component_fields(hex_value, 0)
+            components_values[f'{component.id}{in_suffix}'] = component_value
+
+        return components_values, total_weight

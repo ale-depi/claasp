@@ -116,8 +116,7 @@ class SatCipherModel(SatModel):
         components_values = self._get_cipher_inputs_values(out_suffix, output_values_dict)
         for component in self._cipher.get_all_components():
             output_bit_size = component.output_bit_size
-            output_value = self.get_component_value(component, out_suffix, output_bit_size,
-                                                    output_values_dict)
+            output_value = self.get_component_value(component, out_suffix, output_bit_size, output_values_dict)
             hex_digits = output_bit_size // 4 + (output_bit_size % 4 != 0)
             hex_value = f'{output_value:0{hex_digits}x}'
             component_value = set_component_fields(hex_value)
