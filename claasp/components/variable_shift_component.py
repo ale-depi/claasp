@@ -211,7 +211,7 @@ class VariableShift(Component):
 
         return var_names, mzn_shift_by_variable_amount_constraints
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for SHIFT BY VARIABLE AMOUNT in SAT CIPHER model.
 

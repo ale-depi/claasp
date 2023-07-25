@@ -443,7 +443,7 @@ class LinearLayer(Component):
 
         return variables, constraints
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for LINEAR LAYER in SAT CIPHER model.
 

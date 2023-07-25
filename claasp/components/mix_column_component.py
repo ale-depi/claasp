@@ -624,7 +624,7 @@ class MixColumn(LinearLayer):
         result = variables, constraints
         return result
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for MIX COLUMN in SAT CIPHER model.
 

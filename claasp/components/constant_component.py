@@ -423,7 +423,7 @@ class Constant(Component):
         result = var_names, constant_component_string
         return result
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for a CONSTANT in SAT CIPHER model.
 

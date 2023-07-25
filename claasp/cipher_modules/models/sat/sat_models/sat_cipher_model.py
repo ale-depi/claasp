@@ -29,6 +29,7 @@ class SatCipherModel(SatModel):
     def __init__(self, cipher, window_size=-1, window_size_weight_pr_vars=-1,
                  counter='sequential', compact=False):
         super().__init__(cipher, window_size, window_size_weight_pr_vars, counter, compact)
+        self._sboxes_anfs = {}
 
     def build_cipher_model(self, fixed_variables=[]):
         """
@@ -63,7 +64,7 @@ class SatCipherModel(SatModel):
                     WORD_OPERATION == component.type and operation not in operation_types):
                 print(f'{component.id} not yet implemented')
             else:
-                variables, constraints = component.sat_constraints()
+                variables, constraints = component.sat_constraints(self)
 
             self._model_constraints.extend(constraints)
             self._variables_list.extend(variables)

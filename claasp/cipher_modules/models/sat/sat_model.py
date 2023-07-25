@@ -126,8 +126,6 @@ class SatModel:
         self._cipher = internal_graph
         self._variables_list = []
         self._model_constraints = []
-        self._sboxes_ddt_templates = {}
-        self._sboxes_lat_templates = {}
         self._window_size = window_size
         self.window_size_weight_pr_vars = window_size_weight_pr_vars
 

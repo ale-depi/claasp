@@ -531,7 +531,7 @@ class Rotate(Component):
     def minizinc_xor_differential_propagation_constraints(self, model):
         return self.minizinc_constraints(model)
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for ROTATION in SAT CIPHER model.
 

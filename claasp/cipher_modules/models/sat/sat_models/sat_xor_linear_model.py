@@ -31,6 +31,7 @@ class SatXorLinearModel(SatModel):
                  counter='sequential', compact=False):
         super().__init__(cipher, window_size, window_size_weight_pr_vars, counter, compact)
         self.bit_bindings, self.bit_bindings_for_intermediate_output = get_bit_bindings(cipher, '_'.join)
+        self._sboxes_lat_templates = {}
 
     def branch_xor_linear_constraints(self):
         """

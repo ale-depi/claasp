@@ -168,7 +168,7 @@ class MODSUB(Modular):
     def get_byte_based_vectorized_python_code(self, params):
         return [f'  {self.id} = byte_vector_MODSUB({params})']
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for Modular Subtraction in SAT CIPHER model.
 

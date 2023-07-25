@@ -315,7 +315,7 @@ class AND(MultiInputNonlinearLogicalOperator):
     def get_byte_based_vectorized_python_code(self, params):
         return [f'  {self.id} =byte_vector_AND({params})']
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for AND operation in SAT CIPHER model.
 

@@ -29,6 +29,7 @@ class SatXorDifferentialModel(SatModel):
     def __init__(self, cipher, window_size=-1, window_size_weight_pr_vars=-1,
                  counter='sequential', compact=False):
         super().__init__(cipher, window_size, window_size_weight_pr_vars, counter, compact)
+        self._sboxes_ddt_templates = {}
 
     def build_xor_differential_trail_model(self, weight=-1, fixed_variables=[]):
         """

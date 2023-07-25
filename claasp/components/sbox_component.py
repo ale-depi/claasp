@@ -17,6 +17,7 @@
 # ****************************************************************************
 
 
+import itertools
 import math
 import subprocess
 from math import log
@@ -27,6 +28,7 @@ from sage.crypto.sbox import SBox
 from claasp.input import Input
 from claasp.component import Component, free_input
 from claasp.cipher_modules.models.sat.utils import constants
+from claasp.cipher_modules.models.sat.utils import utils as sat_utils
 from claasp.cipher_modules.models.smt.utils import utils as smt_utils
 from claasp.cipher_modules.models.milp.utils.generate_inequalities_for_large_sboxes import (
     update_dictionary_that_contains_inequalities_for_large_sboxes,
@@ -116,6 +118,41 @@ def milp_large_xor_probability_constraint_for_inequality(M, component_id, ineq, 
     constraint += M * (1 - x[f"{component_id}_sboxproba_{proba}"])  # conditional constraints
 
     return constraint
+
+
+def paar(matrix, symbolic_equations, y_ids, x_ids, intermediate_id):
+    intermediate_ind = 0
+    num_of_eqs = len(matrix[0])
+    algorithm = []
+    while sum(len(equation) for equation in symbolic_equations) != num_of_eqs:
+        ind_0, ind_1 = 0, 1
+        col_0, col_1 = matrix[ind_0], matrix[ind_1]
+        new_col = [bit_0 & bit_1 for bit_0, bit_1 in zip(col_0, col_1)]
+        max_hw = sum(new_col)
+        for curr_ind_0, curr_ind_1 in itertools.combinations(range(len(matrix)), 2):
+            curr_col_0, curr_col_1 = matrix[curr_ind_0], matrix[curr_ind_1]
+            current_col = [bit_0 & bit_1 for bit_0, bit_1 in zip(curr_col_0, curr_col_1)]
+            current_hw = sum(current_col)
+            if current_hw > max_hw:
+                ind_0, ind_1 = curr_ind_0, curr_ind_1
+                new_col = current_col
+                max_hw = current_hw
+        matrix[ind_0] = [bit_0 ^ new_bit for bit_0, new_bit in zip(matrix[ind_0], new_col)]
+        matrix[ind_1] = [bit_1 ^ new_bit for bit_1, new_bit in zip(matrix[ind_1], new_col)]
+        matrix.append(new_col)
+        new_step = {x_ids[ind_0], x_ids[ind_1]}
+        if new_step in symbolic_equations:
+            result_var = y_ids[symbolic_equations.index(new_step)]
+        else:
+            result_var = f'int_{intermediate_ind:03}_{intermediate_id}'
+            intermediate_ind += 1
+        for i, equation in enumerate(symbolic_equations):
+            if new_step <= equation:
+                symbolic_equations[i].difference_update(new_step)
+                symbolic_equations[i].add(result_var)
+        algorithm.append((result_var, x_ids[ind_0], x_ids[ind_1]))
+        x_ids.append(result_var)
+    return algorithm
 
 
 def sat_build_table_template(table, get_hamming_weight_function, input_bit_len, output_bit_len):
@@ -957,8 +994,8 @@ class SBOX(Component):
         integer_variable = model.integer_variable
         non_linear_component_id = model.non_linear_component_id
         variables, constraints = self.milp_large_xor_differential_probability_constraints(binary_variable,
-                                                                                              integer_variable,
-                                                                                              non_linear_component_id)
+                                                                                          integer_variable,
+                                                                                          non_linear_component_id)
 
         return variables, constraints
 
@@ -1006,7 +1043,7 @@ class SBOX(Component):
                                                                                         non_linear_component_id)
         return variables, constraints
 
-    def sat_constraints(self):
+    def sat_constraints(self, model):
         """
         Return a list of variables and a list of clauses for S-BOX in SAT CIPHER model.
 
@@ -1032,24 +1069,71 @@ class SBOX(Component):
               '-xor_0_0_4 -xor_0_0_5 -xor_0_0_6 -xor_0_0_7 sbox_0_2_2',
               '-xor_0_0_4 -xor_0_0_5 -xor_0_0_6 -xor_0_0_7 -sbox_0_2_3'])
         """
-        input_bit_len, input_bit_ids = self._generate_input_ids()
-        output_bit_len, output_bit_ids = self._generate_output_ids()
+        input_len, input_ids = self._generate_input_ids()
+        output_len, output_ids = self._generate_output_ids()
         sbox_values = self.description
-        constraints = []
-        for i in range(2 ** input_bit_len):
-            input_minus = ['-' * (i >> j & 1) for j in reversed(range(input_bit_len))]
-            current_input_bit_ids = [f'{input_minus[j]}{input_bit_ids[j]}'
-                                     for j in range(input_bit_len)]
-            output_minus = ['-' * ((sbox_values[i] >> j & 1) ^ 1)
-                            for j in reversed(range(output_bit_len))]
-            current_output_bit_ids = [f'{output_minus[j]}{output_bit_ids[j]}'
-                                      for j in range(output_bit_len)]
-            input_constraint = ' '.join(current_input_bit_ids)
-            for j in range(output_bit_len):
-                constraint = f'{input_constraint} {current_output_bit_ids[j]}'
-                constraints.append(constraint)
+        sbox_id = f'{sbox_values}'
+        sboxes_anfs = model._sboxes_anfs
 
-        return output_bit_ids, constraints
+        # if ANF template is not initialized in instance fields, compute it
+        if sbox_id not in sboxes_anfs:
+            sbox = SBox(sbox_values)
+            sbox_components = (sbox.component_function(1 << i) for i in range(output_len))
+            anf = [f'{sbox_component.algebraic_normal_form()}' for sbox_component in sbox_components]
+            sboxes_anfs[sbox_id] = anf
+
+        anf = sboxes_anfs[sbox_id]
+        input_ids.reverse()
+        output_ids.reverse()
+        translated_anfs = []
+        and_operation2and_id = {}
+        and_index = 0
+        xor_variables = []
+        constraints = []
+        for i in range(output_len):
+            xor_inputs = anf[i].split(' + ')
+            if xor_inputs[-1] == '1':
+                xor_inputs.pop()
+                constraints.extend(sat_utils.cnf_inequality(output_ids[i], f'not_{output_ids[i]}'))
+                output_ids[i] = f'not_{output_ids[i]}'
+            translated_anf = set()
+            for xor_input in xor_inputs:
+                if '*' in xor_input:
+                    if xor_input not in and_operation2and_id:
+                        and_id = f'and_{and_index}_{self.id}'
+                        and_operation2and_id[xor_input] = and_id
+                        xor_variables.append(and_id)
+                        and_index += 1
+                    translated_anf.add(and_operation2and_id[xor_input])
+                else:
+                    input_id = input_ids[int(xor_input[1:])]
+                    translated_anf.add(input_id)
+                    if input_id not in xor_variables:
+                        xor_variables.append(input_id)
+            translated_anfs.append(translated_anf)
+        matrix = []
+        for variable in xor_variables:
+            column = [1 if variable in anf else 0 for anf in translated_anfs]
+            matrix.append(column)
+        algorithm = paar(matrix, translated_anfs, output_ids, xor_variables, f'intermediate_xor_{self.id}')
+        for step in algorithm:
+            constraints.extend(sat_utils.cnf_xor(step[0], [step[1], step[2]]))
+        matrix = [[0] * len(and_operation2and_id) for _ in range(input_len)]
+        symbolic_equations = []
+        for i, and_operation in enumerate(and_operation2and_id):
+            and_variables = and_operation.split('*')
+            equation = set()
+            for and_variable in and_variables:
+                and_variable_index = int(and_variable[1:])
+                matrix[and_variable_index][i] = 1
+                equation.add(input_ids[and_variable_index])
+            symbolic_equations.append(equation)
+        and_output_ids = list(and_operation2and_id.values())
+        algorithm = paar(matrix, symbolic_equations, and_output_ids, input_ids, f'intermediate_and_{self.id}')
+        for step in algorithm:
+            constraints.extend(sat_utils.cnf_and(step[0], (step[1], step[2])))
+
+        return output_ids, constraints
 
     def sat_xor_differential_propagation_constraints(self, model):
         """

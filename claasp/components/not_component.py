@@ -438,7 +438,7 @@ class NOT(Component):
 
         return variables, constraints
 
-    def sat_constraints(self):
+    def sat_constraints(self, model=None):
         """
         Return a list of variables and a list of clauses for NOT operation in SAT CIPHER model.
 
