@@ -110,11 +110,11 @@ RUN wget https://github.com/MiniZinc/MiniZincIDE/releases/download/2.6.4/MiniZin
 ENV PATH="/opt/MiniZincIDE-2.6.4-bundle-linux-x86_64/bin:${PATH}"
 
 # Installing CryptoMiniSat
-RUN wget https://github.com/msoos/cryptominisat/archive/refs/tags/5.11.4.tar.gz \
-    && tar -xf 5.11.4.tar.gz \
-    && rm 5.11.4.tar.gz
+RUN wget https://github.com/msoos/cryptominisat/archive/refs/tags/5.11.12.tar.gz \
+    && tar -xf 5.11.12.tar.gz \
+    && rm 5.11.12.tar.gz
 
-RUN cd cryptominisat-5.11.4 \
+RUN cd cryptominisat-5.11.12 \
     && mkdir build \
     && cd build \
     && cmake .. \
