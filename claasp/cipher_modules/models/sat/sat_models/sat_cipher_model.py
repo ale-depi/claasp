@@ -64,7 +64,7 @@ class SatCipherModel(SatModel):
                     WORD_OPERATION == component.type and operation not in operation_types):
                 print(f'{component.id} not yet implemented')
             else:
-                variables, constraints = component.sat_constraints(self)
+                variables, constraints = component.sat_constraints()
 
             self._model_constraints.extend(constraints)
             self._variables_list.extend(variables)
